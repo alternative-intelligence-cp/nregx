@@ -1,0 +1,8 @@
+use "../src/nregx.npk".*;
+
+pub func:main = int32() {
+    drop(nregx_init());
+    
+    // test basic functionality
+    exit(0);
+};

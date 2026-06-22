@@ -1,0 +1,68 @@
+// nregx.npk — High-Level Facade
+
+use "regex_types.npk".*;
+use "ast_types.npk".*;
+use "regex_arena.npk".*;
+use "regex_compiler.npk".*;
+use "nfa_compiler.npk".*;
+use "regex_vm.npk".*;
+use "regex_cache.npk".*;
+use "prefix_extractor.npk".*;
+use "error_codes.npk".*;
+use "mem_primitives.npk".*;
+
+pub func:nregx_init = int32() {
+    drop(regex_cache_init());
+    pass(0i32);
+};
+
+func:compile_and_cache = int64(int64:pattern, int64:pattern_len) {
+    // 1. Check cache
+    int64:entry = raw regex_cache_get(pattern, pattern_len);
+    if (entry != 0i64) {
+        pass(entry);
+    }
+    
+    // 2. Lex pattern
+    int64:tokens = npk_core_alloc(pattern_len * 8i64);
+    if (tokens == 0i64) { pass(0i64); }
+    
+    int32:token_count = raw lex_pattern(pattern, pattern_len, tokens);
+    
+    // 3. Parse AST
+    int64:ast_root = raw parse_regex_ast(tokens, token_count);
+    
+    // 4. Init Arena
+    int64:arena_capacity = 1024i64; // default capacity
+    int64:arena_ptr = raw regex_arena_init(arena_capacity);
+    
+    // 5. Compile NFA
+    int64:start_state = raw compile_nfa(arena_ptr, ast_root);
+    
+    // 6. Insert to cache
+    entry = raw regex_cache_insert(pattern, pattern_len, arena_ptr, start_state);
+    
+    drop(npk_core_dalloc(tokens));
+    pass(entry);
+};
+
+pub func:nregx_match = int32(int64:pattern, int64:pattern_len, int64:text, int64:text_len) {
+    int64:entry = raw compile_and_cache(pattern, pattern_len);
+    if (entry == 0i64) { pass(0i32); } // compilation failed
+    
+    int32:match = raw regex_execute(entry, text, text_len);
+    pass(match);
+};
+
+pub func:nregx_extract = int64(int64:pattern, int64:pattern_len) {
+    int64:tokens = npk_core_alloc(pattern_len * 8i64);
+    if (tokens == 0i64) { pass(0i64); }
+    
+    int32:token_count = raw lex_pattern(pattern, pattern_len, tokens);
+    int64:ast_root = raw parse_regex_ast(tokens, token_count);
+    
+    int64:ext = raw extract_literal_prefix(ast_root, pattern);
+    
+    drop(npk_core_dalloc(tokens));
+    pass(ext);
+};
