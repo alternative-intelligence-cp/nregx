@@ -1,0 +1,14 @@
+use "util/mem_primitives.npk".*;
+
+pub struct:CacheEntry = {
+    int64:p_str;
+    int64:p_len;
+    int64:arena_ptr;
+    int64:start_state;
+    int64:hit_counter;
+    int64:next;
+    int64:ref_count;
+    int64:is_unlinked;
+};
+
+func:main = int32() { pass(0i32); };

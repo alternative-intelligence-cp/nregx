@@ -28,3 +28,18 @@ pub struct:Regex = {
     Handle<NfaState>:start_state;
     int32:state_count;
 };
+
+pub struct:AtomicInt64 = {
+    int64:val;
+};
+
+pub struct:CacheEntry = {
+    int64:p_str;
+    int64:p_len;
+    int64:arena_ptr;
+    int64:start_state;
+    Handle<AtomicInt64>:hit_counter;
+    Handle<CacheEntry>:next;
+    Handle<AtomicInt64>:ref_count;
+    int64:is_unlinked;
+};

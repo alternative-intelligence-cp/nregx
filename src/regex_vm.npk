@@ -19,10 +19,10 @@ func:add_state = int64(int64:start_state, int64:list_ah, int64:visit_gen, int64:
         
         if (last_visit != visit_gen) {
             drop(npk_mem_write_int64(visited_arr, state_idx * 8i64, visit_gen));
-            
-            int32:opcode = npk_mem_read_int32(state, 0i64);
-            int64:out1 = npk_mem_read_int64(state, 8i64);
-            int64:out2 = npk_mem_read_int64(state, 16i64);
+            wild NfaState->:state_ptr = state;
+            int32:opcode = state_ptr.opcode;
+            int64:out1 = state_ptr.out1;
+            int64:out2 = state_ptr.out2;
             
             if (opcode == OP_SPLIT) {
                 if (out2 != 0i64) { apush(work_ah, out2); }
@@ -79,20 +79,21 @@ pub func:regex_vm_match = int32(int64:arena_ptr, int64:start_state, int64:text, 
             
             when (asize(clist_ah) > 0i64) {
                 int64:state = apop(clist_ah);
-                int32:opcode = npk_mem_read_int32(state, 0i64);
+                wild NfaState->:state_ptr = state;
+                int32:opcode = state_ptr.opcode;
                 
                 if (opcode == OP_MATCH) {
                     matched = 1i32;
                     running = 0i32;
                 } else if (c != -1i64) {
                     if (opcode == OP_CHAR) {
-                        int32:match_char = npk_mem_read_int32(state, 4i64);
+                        int32:match_char = state_ptr.match_char;
                         if (c == (match_char => int64)) {
-                            int64:out1 = npk_mem_read_int64(state, 8i64);
+                            int64:out1 = state_ptr.out1;
                             drop(add_state(out1, nlist_ah, visit_gen, visited_arr, arena_data, work_ah));
                         }
                     } else if (opcode == OP_ANY) {
-                        int64:out1 = npk_mem_read_int64(state, 8i64);
+                        int64:out1 = state_ptr.out1;
                         drop(add_state(out1, nlist_ah, visit_gen, visited_arr, arena_data, work_ah));
                     }
                 }
