@@ -32,7 +32,7 @@ func:aclear_list = int64(int64:list_ah) {
     pass 0i64;
 };
 
-func:add_state = int64(int64:start_state, int64:list_ah, int64:visit_gen, int64:visited_arr, int64:arena_data, int64:work_ah) {
+func:add_state = int64(int64:start_state, int64:list_ah, int64:visit_gen, int64:visited_arr, int64:arena_data, int64:work_ah, int64:idx, int64:text_len) {
     if (start_state == 0i64) { pass 0i64; }
     
     drop(apush_list(work_ah, start_state));
@@ -55,6 +55,14 @@ func:add_state = int64(int64:start_state, int64:list_ah, int64:visit_gen, int64:
                 if (out1 != 0i64) { drop(apush_list(work_ah, out1)); }
             } else if (opcode == OP_JMP) {
                 if (out1 != 0i64) { drop(apush_list(work_ah, out1)); }
+            } else if (opcode == OP_ASSERT_START) {
+                if (idx == 0i64) {
+                    if (out1 != 0i64) { drop(apush_list(work_ah, out1)); }
+                }
+            } else if (opcode == OP_ASSERT_END) {
+                if (idx == text_len) {
+                    if (out1 != 0i64) { drop(apush_list(work_ah, out1)); }
+                }
             } else {
                 drop(apush_list(list_ah, state));
             }
@@ -83,14 +91,14 @@ pub func:regex_vm_match = int64(int64:arena_ptr, int64:start_state, int64:text, 
     
     int64:visit_gen = 1i64;
     
-    drop add_state(start_state, clist_ah, visit_gen, visited_arr, arena_data, work_ah);
+    drop add_state(start_state, clist_ah, visit_gen, visited_arr, arena_data, work_ah, 0i64, text_len);
     
     int64:idx = 0i64;
     int32:matched = 0i32;
     int32:running = 1i32;
     
     when (running == 1i32) {
-        drop add_state(start_state, clist_ah, visit_gen, visited_arr, arena_data, work_ah);
+        drop add_state(start_state, clist_ah, visit_gen, visited_arr, arena_data, work_ah, idx, text_len);
         
         if (raw asize_list(clist_ah) == 0i64) {
             running = 0i32;
@@ -114,11 +122,19 @@ pub func:regex_vm_match = int64(int64:arena_ptr, int64:start_state, int64:text, 
                         int32:match_char = npk_mem_read_int32(state, 4i64);
                         if (c == (match_char => int64)) {
                             int64:out1 = npk_mem_read_int64(state, 8i64);
-                            drop add_state(out1, nlist_ah, visit_gen, visited_arr, arena_data, work_ah);
+                            drop add_state(out1, nlist_ah, visit_gen, visited_arr, arena_data, work_ah, idx + 1i64, text_len);
                         }
                     } else if (opcode == OP_ANY) {
                         int64:out1 = npk_mem_read_int64(state, 8i64);
-                        drop add_state(out1, nlist_ah, visit_gen, visited_arr, arena_data, work_ah);
+                        drop add_state(out1, nlist_ah, visit_gen, visited_arr, arena_data, work_ah, idx + 1i64, text_len);
+                    } else if (opcode == OP_CHAR_CLASS) {
+                        int64:byte_idx = c / 8i64;
+                        int64:bit_idx = c % 8i64;
+                        int64:mask_byte = npk_mem_read_byte(state, 24i64 + byte_idx);
+                        if ((mask_byte & (1i64 << bit_idx)) != 0i64) {
+                            int64:out1 = npk_mem_read_int64(state, 8i64);
+                            drop add_state(out1, nlist_ah, visit_gen, visited_arr, arena_data, work_ah, idx + 1i64, text_len);
+                        }
                     }
                 }
             }
