@@ -63,8 +63,8 @@ func:add_state = int64(int64:start_state, int64:list_ah, int64:visit_gen, int64:
     pass 0i64;
 };
 
-pub func:regex_vm_match = int32(int64:arena_ptr, int64:start_state, int64:text, int64:text_len) {
-    if (start_state == 0i64) { pass 0i32; }
+pub func:regex_vm_match = int64(int64:arena_ptr, int64:start_state, int64:text, int64:text_len) {
+    if (start_state == 0i64) { pass 0i64; }
     
     int64:capacity = npk_mem_read_int64(arena_ptr, 8i64);
     int64:arena_data = npk_mem_read_int64(arena_ptr, 0i64);
@@ -138,5 +138,13 @@ pub func:regex_vm_match = int32(int64:arena_ptr, int64:start_state, int64:text, 
         }
     }
     
-    pass matched;
+    int64:res_ptr = 0i64;
+    if (matched == 1i32) {
+        res_ptr = npk_core_alloc(12i64);
+        wild MatchResult->:m = @cast_unchecked<MatchResult->>(res_ptr);
+        m.matched = 1i32;
+        m.start_idx = 0i32;
+        m.end_idx = idx => int32;
+    }
+    pass res_ptr;
 };

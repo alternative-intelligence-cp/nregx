@@ -27,8 +27,8 @@ pub struct:MatchResult = {
 pub struct:NfaState = {
     int32:opcode;
     int32:match_char;
-    Handle<NfaState>:out1;
-    Handle<NfaState>:out2;
+    int64:out1;
+    int64:out2;
     int64:charset0; // bytes 0-7
     int64:charset1; // bytes 8-15
     int64:charset2; // bytes 16-23
@@ -37,7 +37,7 @@ pub struct:NfaState = {
 
 // The compiled regular expression execution bundle
 pub struct:Regex = {
-    Handle<NfaState>:start_state;
+    int64:start_state;
     int32:state_count;
 };
 
@@ -47,8 +47,8 @@ pub struct:CacheEntry = {
     int64:p_len;
     int64:arena_ptr;
     int64:start_state;
-    Handle<AtomicInt64>:hit_counter;
-    Handle<CacheEntry>:next;
-    Handle<AtomicInt64>:ref_count;
+    int64:hit_counter;
+    int64:next;
+    int64:ref_count;
     int64:is_unlinked;
 };
