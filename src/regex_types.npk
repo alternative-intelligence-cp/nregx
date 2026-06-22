@@ -13,6 +13,15 @@ pub fixed int32:OP_SPLIT      = 2i32;
 pub fixed int32:OP_JMP        = 3i32;
 pub fixed int32:OP_ANY        = 4i32;
 pub fixed int32:OP_CHAR_CLASS = 5i32;
+pub fixed int32:OP_ASSERT_START = 6i32;
+pub fixed int32:OP_ASSERT_END   = 7i32;
+
+// Match Boundary struct for public API
+pub struct:MatchResult = {
+    int32:matched;
+    int32:start_idx;
+    int32:end_idx;
+};
 
 // NFA State node utilizing Generational Handles
 pub struct:NfaState = {
@@ -20,7 +29,10 @@ pub struct:NfaState = {
     int32:match_char;
     Handle<NfaState>:out1;
     Handle<NfaState>:out2;
-    uint8[32]:charset; // 256-bit bitmask for character classes
+    int64:charset0; // bytes 0-7
+    int64:charset1; // bytes 8-15
+    int64:charset2; // bytes 16-23
+    int64:charset3; // bytes 24-31
 };
 
 // The compiled regular expression execution bundle
@@ -29,9 +41,6 @@ pub struct:Regex = {
     int32:state_count;
 };
 
-pub struct:AtomicInt64 = {
-    int64:val;
-};
 
 pub struct:CacheEntry = {
     int64:p_str;

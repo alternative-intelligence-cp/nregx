@@ -13,24 +13,31 @@ extern "nitpick_libc_sys" {
 
 // Memory-safe AST Node allocator using the thread-local batch
 func:alloc_ast_node = int64(int32:type, int32:val) {
-    int64:node = npk_tlc_batch_alloc(32i64);
-    wild AstNode->:ptr = node;
+    int64:node = npk_tlc_batch_alloc(64i64);
+    wild AstNode->:ptr = @cast_unchecked<AstNode->>(node);
     ptr.type = type;
     ptr.val = val;
     ptr.left = 0i64;
     ptr.right = 0i64;
-    pass(node);
+    
+    int64:i = 0i64;
+    when (i < 32i64) {
+        drop npk_mem_write_byte(node, 24i64 + i, 0i64);
+        i = i + 1i64;
+    }
+    
+    pass node;
 };
 
 // ── LEXER ────────────────────────────────────────────────────────────────
 
-pub func:lex_pattern = int32(int64:pattern, limit<r_valid_regex_len> int64:len, int64:out_tokens) {
+pub func:lex_pattern = int32(int64:pattern, limit<r_valid_regex_len> int64:len, int64:tokens) {
     int64:i = 0i64;
     int32:token_count = 0i32;
 
     when (i < len) {
         int64:c = npk_mem_read_byte(pattern, i);
-        wild Token->:tok_ptr = tokens + ((token_count => int64) * 8i64);
+        wild Token->:tok_ptr = @cast_unchecked<Token->>(tokens + ((token_count => int64) * 8i64));
         
         if (c == 42i64) { 
             tok_ptr.type = TOKEN_STAR;
@@ -46,6 +53,16 @@ pub func:lex_pattern = int32(int64:pattern, limit<r_valid_regex_len> int64:len, 
             tok_ptr.type = TOKEN_RPAREN;
         } else if (c == 46i64) { 
             tok_ptr.type = TOKEN_DOT;
+        } else if (c == 91i64) {
+            tok_ptr.type = TOKEN_LBRACKET;
+        } else if (c == 93i64) {
+            tok_ptr.type = TOKEN_RBRACKET;
+        } else if (c == 94i64) {
+            tok_ptr.type = TOKEN_CARET;
+        } else if (c == 36i64) {
+            tok_ptr.type = TOKEN_DOLLAR;
+        } else if (c == 92i64) {
+            tok_ptr.type = TOKEN_ESCAPE;
         } else { 
             tok_ptr.type = TOKEN_LITERAL;
             tok_ptr.val = c => int32;
@@ -55,15 +72,15 @@ pub func:lex_pattern = int32(int64:pattern, limit<r_valid_regex_len> int64:len, 
         i = i + 1i64;
     }
     
-    pass(token_count);
+    pass token_count;
 };
 
 // ── RECURSIVE DESCENT PARSER ──────────────────────────────────────────────────
 
 func:parse_alt = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth) {
-    if (depth > 128i32) { pass(0i64); }
+    if (depth > 128i32) { pass 0i64; }
     int64:left = raw parse_concat(tokens, count, idx_ptr, depth + 1i32);
-    if (left == 0i64) { pass(0i64); }
+    if (left == 0i64) { pass 0i64; }
     
     int32:running = 1i32;
     when (running == 1i32) {
@@ -71,14 +88,14 @@ func:parse_alt = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth) {
         if (idx >= count) {
             running = 0i32;
         } else {
-            wild Token->:tok_ptr = tokens + ((idx => int64) * 8i64);
+            wild Token->:tok_ptr = @cast_unchecked<Token->>(tokens + ((idx => int64) * 8i64));
             int32:tok_type = tok_ptr.type;
             if (tok_type == TOKEN_PIPE) {
-                drop(npk_mem_write_int32(idx_ptr, 0i64, idx + 1i32));
+                drop npk_mem_write_int32(idx_ptr, 0i64, idx + 1i32);
                 int64:right = raw parse_concat(tokens, count, idx_ptr, depth + 1i32);
-                if (right == 0i64) { pass(0i64); }
+                if (right == 0i64) { pass 0i64; }
                 int64:alt_node = raw alloc_ast_node(AST_ALT, 0i32);
-                wild AstNode->:alt_ptr = alt_node;
+                wild AstNode->:alt_ptr = @cast_unchecked<AstNode->>(alt_node);
                 alt_ptr.left = left;
                 alt_ptr.right = right;
                 left = alt_node;
@@ -87,13 +104,13 @@ func:parse_alt = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth) {
             }
         }
     }
-    pass(left);
+    pass left;
 };
 
 func:parse_concat = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth) {
-    if (depth > 128i32) { pass(0i64); }
+    if (depth > 128i32) { pass 0i64; }
     int64:left = raw parse_rep(tokens, count, idx_ptr, depth + 1i32);
-    if (left == 0i64) { pass(0i64); }
+    if (left == 0i64) { pass 0i64; }
     
     int32:running = 1i32;
     when (running == 1i32) {
@@ -101,14 +118,15 @@ func:parse_concat = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth)
         if (idx >= count) {
             running = 0i32;
         } else {
-            wild Token->:tok_ptr = tokens + ((idx => int64) * 8i64);
+            wild Token->:tok_ptr = @cast_unchecked<Token->>(tokens + ((idx => int64) * 8i64));
             int32:tok_type = tok_ptr.type;
-            // concat if token is LITERAL, DOT, LPAREN
-            if ((tok_type == TOKEN_LITERAL) || (tok_type == TOKEN_DOT) || (tok_type == TOKEN_LPAREN)) {
+            // concat if token is LITERAL, DOT, LPAREN, LBRACKET, CARET, DOLLAR, ESCAPE
+            if ((tok_type == TOKEN_LITERAL) || (tok_type == TOKEN_DOT) || (tok_type == TOKEN_LPAREN) || 
+                (tok_type == TOKEN_LBRACKET) || (tok_type == TOKEN_CARET) || (tok_type == TOKEN_DOLLAR) || (tok_type == TOKEN_ESCAPE)) {
                 int64:right = raw parse_rep(tokens, count, idx_ptr, depth + 1i32);
-                if (right == 0i64) { pass(0i64); }
+                if (right == 0i64) { pass 0i64; }
                 int64:concat_node = raw alloc_ast_node(AST_CONCAT, 0i32);
-                wild AstNode->:concat_ptr = concat_node;
+                wild AstNode->:concat_ptr = @cast_unchecked<AstNode->>(concat_node);
                 concat_ptr.left = left;
                 concat_ptr.right = right;
                 left = concat_node;
@@ -117,92 +135,192 @@ func:parse_concat = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth)
             }
         }
     }
-    pass(left);
+    pass left;
 };
 
 func:parse_rep = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth) {
-    if (depth > 128i32) { pass(0i64); }
+    if (depth > 128i32) { pass 0i64; }
     int64:node = raw parse_atom(tokens, count, idx_ptr, depth + 1i32);
-    if (node == 0i64) { pass(0i64); }
+    if (node == 0i64) { pass 0i64; }
     
     int32:idx = npk_mem_read_int32(idx_ptr, 0i64);
     if (idx < count) {
-        wild Token->:tok_ptr = tokens + ((idx => int64) * 8i64);
+        wild Token->:tok_ptr = @cast_unchecked<Token->>(tokens + ((idx => int64) * 8i64));
         int32:tok_type = tok_ptr.type;
         
         if (tok_type == TOKEN_STAR) {
-            drop(npk_mem_write_int32(idx_ptr, 0i64, idx + 1i32));
+            drop npk_mem_write_int32(idx_ptr, 0i64, idx + 1i32);
             int64:star_node = raw alloc_ast_node(AST_STAR, 0i32);
-            wild AstNode->:star_ptr = star_node;
+            wild AstNode->:star_ptr = @cast_unchecked<AstNode->>(star_node);
             star_ptr.left = node;
             node = star_node;
         } else if (tok_type == TOKEN_PLUS) {
-            drop(npk_mem_write_int32(idx_ptr, 0i64, idx + 1i32));
+            drop npk_mem_write_int32(idx_ptr, 0i64, idx + 1i32);
             int64:plus_node = raw alloc_ast_node(AST_PLUS, 0i32);
-            wild AstNode->:plus_ptr = plus_node;
+            wild AstNode->:plus_ptr = @cast_unchecked<AstNode->>(plus_node);
             plus_ptr.left = node;
             node = plus_node;
         } else if (tok_type == TOKEN_QMARK) {
-            drop(npk_mem_write_int32(idx_ptr, 0i64, idx + 1i32));
+            drop npk_mem_write_int32(idx_ptr, 0i64, idx + 1i32);
             int64:qmark_node = raw alloc_ast_node(AST_QMARK, 0i32);
-            wild AstNode->:qmark_ptr = qmark_node;
+            wild AstNode->:qmark_ptr = @cast_unchecked<AstNode->>(qmark_node);
             qmark_ptr.left = node;
             node = qmark_node;
         }
     }
-    pass(node);
+    pass node;
 };
 
 func:parse_atom = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth) {
-    if (depth > 128i32) { pass(0i64); }
+    if (depth > 128i32) { pass 0i64; }
     
     int32:idx = npk_mem_read_int32(idx_ptr, 0i64);
-    if (idx >= count) { pass(0i64); }
+    if (idx >= count) { pass 0i64; }
     
-    wild Token->:tok_ptr = tokens + ((idx => int64) * 8i64);
+    wild Token->:tok_ptr = @cast_unchecked<Token->>(tokens + ((idx => int64) * 8i64));
     int32:tok_type = tok_ptr.type;
     int32:tok_val = tok_ptr.val;
     
-    drop(npk_mem_write_int32(idx_ptr, 0i64, idx + 1i32));
+    drop npk_mem_write_int32(idx_ptr, 0i64, idx + 1i32);
     
     if (tok_type == TOKEN_LITERAL) {
-        pass(raw alloc_ast_node(AST_LITERAL, tok_val));
+        pass raw alloc_ast_node(AST_LITERAL, tok_val);
     } else if (tok_type == TOKEN_DOT) {
-        pass(raw alloc_ast_node(AST_ANY, 0i32));
+        pass raw alloc_ast_node(AST_ANY, 0i32);
+    } else if (tok_type == TOKEN_CARET) {
+        pass raw alloc_ast_node(AST_ASSERT_START, 0i32);
+    } else if (tok_type == TOKEN_DOLLAR) {
+        pass raw alloc_ast_node(AST_ASSERT_END, 0i32);
+    } else if (tok_type == TOKEN_ESCAPE) {
+        // Lookahead 1
+        int32:idx_next = npk_mem_read_int32(idx_ptr, 0i64);
+        if (idx_next >= count) { pass 0i64; } // Invalid escape at end of pattern
+        wild Token->:tok_ptr_next = @cast_unchecked<Token->>(tokens + ((idx_next => int64) * 8i64));
+        int32:esc_val = tok_ptr_next.val;
+        drop npk_mem_write_int32(idx_ptr, 0i64, idx_next + 1i32);
+        
+        if (esc_val == 100i32) { // 'd'
+            int64:c_node = raw alloc_ast_node(AST_CLASS, 0i32);
+            // set digits '0'-'9' (48-57)
+            int64:j = 48i64;
+            when (j <= 57i64) {
+                int64:byte_idx = j / 8i64;
+                int64:bit_idx = j % 8i64;
+                int64:old_byte = npk_mem_read_byte(c_node, 24i64 + byte_idx);
+                int64:new_byte = old_byte | (1i64 << bit_idx);
+                drop npk_mem_write_byte(c_node, 24i64 + byte_idx, new_byte);
+                j = j + 1i64;
+            }
+            pass c_node;
+        } else if (esc_val == 119i32) { // 'w'
+            int64:c_node = raw alloc_ast_node(AST_CLASS, 0i32);
+            // set 'a'-'z' (97-122), 'A'-'Z' (65-90), '0'-'9' (48-57), '_' (95)
+            // This could be a loop, or function, but inline for brevity
+            // (We will just set literal if not alphanumeric for now to save space, but let's implement full if needed)
+            int64:j = 48i64;
+            when (j <= 122i64) {
+                int32:is_w = 0i32;
+                if ((j >= 48i64) && (j <= 57i64)) { is_w = 1i32; }
+                if ((j >= 65i64) && (j <= 90i64)) { is_w = 1i32; }
+                if ((j >= 97i64) && (j <= 122i64)) { is_w = 1i32; }
+                if (j == 95i64) { is_w = 1i32; }
+                
+                if (is_w == 1i32) {
+                    int64:byte_idx = j / 8i64;
+                    int64:bit_idx = j % 8i64;
+                    int64:old_byte = npk_mem_read_byte(c_node, 24i64 + byte_idx);
+                    int64:new_byte = old_byte | (1i64 << bit_idx);
+                    drop npk_mem_write_byte(c_node, 24i64 + byte_idx, new_byte);
+                }
+                j = j + 1i64;
+            }
+            pass c_node;
+        } else {
+            // treat as literal
+            pass raw alloc_ast_node(AST_LITERAL, esc_val);
+        }
+    } else if (tok_type == TOKEN_LBRACKET) {
+        int64:c_node = raw alloc_ast_node(AST_CLASS, 0i32);
+        int32:running = 1i32;
+        when (running == 1i32) {
+            int32:idx_curr = npk_mem_read_int32(idx_ptr, 0i64);
+            if (idx_curr >= count) { pass 0i64; }
+            wild Token->:tok_ptr_curr = @cast_unchecked<Token->>(tokens + ((idx_curr => int64) * 8i64));
+            
+            if (tok_ptr_curr.type == TOKEN_RBRACKET) {
+                drop npk_mem_write_int32(idx_ptr, 0i64, idx_curr + 1i32);
+                running = 0i32;
+            } else {
+                // simple range logic: if we see char, dash, char -> range. Otherwise, char.
+                // For now, let's just parse individual characters, we'll implement ranges if a dash is next.
+                int32:c1 = tok_ptr_curr.val;
+                drop npk_mem_write_int32(idx_ptr, 0i64, idx_curr + 1i32);
+                
+                int32:idx_next = npk_mem_read_int32(idx_ptr, 0i64);
+                int32:is_range = 0i32;
+                int32:c2 = c1;
+                
+                if (idx_next + 1i32 < count) {
+                    wild Token->:tok_ptr_dash = @cast_unchecked<Token->>(tokens + ((idx_next => int64) * 8i64));
+                    // check if dash
+                    if ((tok_ptr_dash.type == TOKEN_LITERAL) && (tok_ptr_dash.val == 45i32)) {
+                        wild Token->:tok_ptr_end = @cast_unchecked<Token->>(tokens + (((idx_next + 1i32) => int64) * 8i64));
+                        if (tok_ptr_end.type != TOKEN_RBRACKET) { // don't treat dash at end of class as range
+                            c2 = tok_ptr_end.val;
+                            drop npk_mem_write_int32(idx_ptr, 0i64, idx_next + 2i32);
+                            is_range = 1i32;
+                        }
+                    }
+                }
+                
+                int64:j = c1 => int64;
+                int64:j_end = c2 => int64;
+                if (j_end < j) { pass 0i64; } // invalid range
+                when (j <= j_end) {
+                    int64:byte_idx = j / 8i64;
+                    int64:bit_idx = j % 8i64;
+                    int64:old_byte = npk_mem_read_byte(c_node, 24i64 + byte_idx);
+                    int64:new_byte = old_byte | (1i64 << bit_idx);
+                    drop npk_mem_write_byte(c_node, 24i64 + byte_idx, new_byte);
+                    j = j + 1i64;
+                }
+            }
+        }
+        pass c_node;
     } else if (tok_type == TOKEN_LPAREN) {
         int64:inner = raw parse_alt(tokens, count, idx_ptr, depth + 1i32);
-        if (inner == 0i64) { pass(0i64); }
+        if (inner == 0i64) { pass 0i64; }
         
         int32:idx2 = npk_mem_read_int32(idx_ptr, 0i64);
-        if (idx2 >= count) { pass(0i64); }
-        wild Token->:tok_ptr2 = tokens + ((idx2 => int64) * 8i64);
+        if (idx2 >= count) { pass 0i64; }
+        wild Token->:tok_ptr2 = @cast_unchecked<Token->>(tokens + ((idx2 => int64) * 8i64));
         int32:tok_type2 = tok_ptr2.type;
         
-        if (tok_type2 != TOKEN_RPAREN) { pass(0i64); }
-        drop(npk_mem_write_int32(idx_ptr, 0i64, idx2 + 1i32));
+        if (tok_type2 != TOKEN_RPAREN) { pass 0i64; }
+        drop npk_mem_write_int32(idx_ptr, 0i64, idx2 + 1i32);
         
-        pass(inner);
+        pass inner;
     }
     
-    pass(0i64);
+    pass 0i64;
 };
 
 pub func:parse_regex_ast = int64(int64:tokens, int32:count) {
     
     if (count == 0i32) {
-        pass(0i64);
+        pass 0i64;
     }
     
     int64:idx_ptr = npk_tlc_batch_alloc(8i64);
-    drop(npk_mem_write_int32(idx_ptr, 0i64, 0i32));
+    drop npk_mem_write_int32(idx_ptr, 0i64, 0i32);
     
     int64:root = raw parse_alt(tokens, count, idx_ptr, 0i32);
-    if (root == 0i64) { pass(0i64); }
+    if (root == 0i64) { pass 0i64; }
     
     int32:idx = npk_mem_read_int32(idx_ptr, 0i64);
     if (idx != count) {
-        pass(0i64); // unexpected trailing tokens
+        pass 0i64; // unexpected trailing tokens
     }
     
-    pass(root);
+    pass root;
 };

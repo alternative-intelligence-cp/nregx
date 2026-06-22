@@ -16,8 +16,8 @@ extern "nitpick_libc_sys" {
 }
 
 pub func:nregx_init = int32() {
-    drop(regex_cache_init());
-    pass(0i32);
+    drop regex_cache_init();
+    pass 0i32;
 };
 
 func:compile_and_cache = int64(int64:pattern, int64:pattern_len) {
@@ -25,12 +25,12 @@ func:compile_and_cache = int64(int64:pattern, int64:pattern_len) {
     // 1. Check cache
     int64:entry = raw regex_cache_get(pattern, pattern_len);
     if (entry != 0i64) {
-        pass(entry);
+        pass entry;
     }
     
     // 2. Lex pattern
     int64:tokens = npk_core_alloc(pattern_len * 8i64);
-    if (tokens == 0i64) { pass(0i64); }
+    if (tokens == 0i64) { pass 0i64; }
     
     int32:token_count = raw lex_pattern(pattern, pattern_len, tokens);
     
@@ -47,28 +47,28 @@ func:compile_and_cache = int64(int64:pattern, int64:pattern_len) {
     // 6. Insert to cache
     entry = raw regex_cache_insert(pattern, pattern_len, arena_ptr, start_state);
     
-    drop(npk_core_dalloc(tokens));
-    pass(entry);
+    drop npk_core_dalloc(tokens);
+    pass entry;
 };
 
-pub func:nregx_match = int32(int64:pattern, int64:pattern_len, int64:text, int64:text_len) {
+pub func:nregx_match = int64(int64:pattern, int64:pattern_len, int64:text, int64:text_len) {
     int64:entry = raw compile_and_cache(pattern, pattern_len);
-    if (entry == 0i64) { pass(0i32); } // compilation failed
+    if (entry == 0i64) { pass 0i64; } // compilation failed
     
-    int32:match = raw regex_execute(entry, text, text_len);
-    pass(match);
+    int64:match_res = raw regex_execute(entry, text, text_len);
+    pass match_res;
 };
 
 pub func:nregx_extract = int64(int64:pattern, int64:pattern_len) {
     defer { npk_tlc_batch_flush(); }
     int64:tokens = npk_core_alloc(pattern_len * 8i64);
-    if (tokens == 0i64) { pass(0i64); }
+    if (tokens == 0i64) { pass 0i64; }
     
     int32:token_count = raw lex_pattern(pattern, pattern_len, tokens);
     int64:ast_root = raw parse_regex_ast(tokens, token_count);
     
     int64:ext = raw extract_literal_prefix(ast_root, pattern);
     
-    drop(npk_core_dalloc(tokens));
-    pass(ext);
+    drop npk_core_dalloc(tokens);
+    pass ext;
 };

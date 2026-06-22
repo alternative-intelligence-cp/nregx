@@ -1,14 +1,115 @@
+use "nregx.npk".*;
+use "regex_types.npk".*;
 use "util/mem_primitives.npk".*;
 
-pub struct:CacheEntry = {
-    int64:p_str;
-    int64:p_len;
-    int64:arena_ptr;
-    int64:start_state;
-    int64:hit_counter;
-    int64:next;
-    int64:ref_count;
-    int64:is_unlinked;
+extern "nitpick_libc_sys" {
+    func:npk_sys_print = void(int64:str, int32:len);
+    func:npk_sys_exit = void(int32:code);
+}
+
+func:print_str = int32(int64:str, int32:len) {
+    npk_sys_print(str, len);
+    pass 0i32;
 };
 
-func:main = int32() { pass(0i32); };
+pub func:main = int32() {
+    drop nregx_init();
+    
+    // Test 1: [0-9]
+    // "a[0-9]b" is 7 bytes
+    int64:pat1 = npk_core_alloc(7i64);
+    drop npk_mem_write_byte(pat1, 0i64, 97i64); // 'a'
+    drop npk_mem_write_byte(pat1, 1i64, 91i64); // '['
+    drop npk_mem_write_byte(pat1, 2i64, 48i64); // '0'
+    drop npk_mem_write_byte(pat1, 3i64, 45i64); // '-'
+    drop npk_mem_write_byte(pat1, 4i64, 57i64); // '9'
+    drop npk_mem_write_byte(pat1, 5i64, 93i64); // ']'
+    drop npk_mem_write_byte(pat1, 6i64, 98i64); // 'b'
+    
+    int64:txt1 = npk_core_alloc(3i64);
+    drop npk_mem_write_byte(txt1, 0i64, 97i64); // 'a'
+    drop npk_mem_write_byte(txt1, 1i64, 53i64); // '5'
+    drop npk_mem_write_byte(txt1, 2i64, 98i64); // 'b'
+    
+    int64:res1 = raw nregx_match(pat1, 7i64, txt1, 3i64);
+    if (res1 != 0i64) {
+        wild MatchResult->:res_ptr1 = @cast_unchecked<MatchResult->>(res1);
+        defer { free(res_ptr1); }
+        if (res_ptr1.matched == 1i32) {
+            // print
+        }
+    }
+    
+    // Test 2: ^a.$
+    int64:pat2 = npk_core_alloc(4i64);
+    drop npk_mem_write_byte(pat2, 0i64, 94i64); // '^'
+    drop npk_mem_write_byte(pat2, 1i64, 97i64); // 'a'
+    drop npk_mem_write_byte(pat2, 2i64, 46i64); // '.'
+    drop npk_mem_write_byte(pat2, 3i64, 36i64); // '$'
+    
+    int64:txt2 = npk_core_alloc(2i64);
+    drop npk_mem_write_byte(txt2, 0i64, 97i64); // 'a'
+    drop npk_mem_write_byte(txt2, 1i64, 98i64); // 'b'
+    
+    int64:res2 = raw nregx_match(pat2, 4i64, txt2, 2i64);
+    if (res2 != 0i64) {
+        wild MatchResult->:res_ptr2 = @cast_unchecked<MatchResult->>(res2);
+        defer { free(res_ptr2); }
+        if (res_ptr2.matched == 1i32) {
+            // print
+        }
+    }
+    
+    // Test 3: \d+
+    int64:pat3 = npk_core_alloc(3i64);
+    drop npk_mem_write_byte(pat3, 0i64, 92i64); // '\'
+    drop npk_mem_write_byte(pat3, 1i64, 100i64); // 'd'
+    drop npk_mem_write_byte(pat3, 2i64, 43i64); // '+'
+    
+    int64:txt3 = npk_core_alloc(3i64);
+    drop npk_mem_write_byte(txt3, 0i64, 49i64); // '1'
+    drop npk_mem_write_byte(txt3, 1i64, 50i64); // '2'
+    drop npk_mem_write_byte(txt3, 2i64, 51i64); // '3'
+    
+    int64:res3 = raw nregx_match(pat3, 3i64, txt3, 3i64);
+    if (res3 != 0i64) {
+        wild MatchResult->:res_ptr3 = @cast_unchecked<MatchResult->>(res3);
+        defer { free(res_ptr3); }
+        if (res_ptr3.matched == 1i32) {
+            // print
+        }
+    }
+    
+    // Test 4: match boundary
+    int64:pat4 = npk_core_alloc(3i64);
+    drop npk_mem_write_byte(pat4, 0i64, 98i64); // 'b'
+    drop npk_mem_write_byte(pat4, 1i64, 43i64); // '+'
+    drop npk_mem_write_byte(pat4, 2i64, 99i64); // 'c'
+    
+    int64:txt4 = npk_core_alloc(6i64);
+    drop npk_mem_write_byte(txt4, 0i64, 97i64); // 'a'
+    drop npk_mem_write_byte(txt4, 1i64, 97i64); // 'a'
+    drop npk_mem_write_byte(txt4, 2i64, 98i64); // 'b'
+    drop npk_mem_write_byte(txt4, 3i64, 98i64); // 'b'
+    drop npk_mem_write_byte(txt4, 4i64, 98i64); // 'b'
+    drop npk_mem_write_byte(txt4, 5i64, 99i64); // 'c'
+    
+    int64:res4 = raw nregx_match(pat4, 3i64, txt4, 6i64);
+    if (res4 != 0i64) {
+        wild MatchResult->:res_ptr4 = @cast_unchecked<MatchResult->>(res4);
+        defer { free(res_ptr4); }
+        if (res_ptr4.matched == 1i32) {
+            if ((res_ptr4.start_idx == 2i32) && (res_ptr4.end_idx == 6i32)) {
+                // print
+            } else {
+                // print
+            }
+        }
+    }
+
+    exit 0i32;
+};
+
+pub func:failsafe = int32(tbb32:err) {
+    exit 1i32;
+};

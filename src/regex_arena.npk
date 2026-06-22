@@ -14,19 +14,19 @@ pub fixed int64:NFA_STATE_SIZE   = 64i64; // opcode(4), match_char(4), out1(8), 
 
 pub func:regex_arena_init = int64(int64:capacity) {
     int64:arena_ptr = npk_core_alloc(REGEX_ARENA_SIZE);
-    if (arena_ptr == 0i64) { pass(0i64); }
+    if (arena_ptr == 0i64) { pass 0i64; }
     
     int64:data = npk_core_alloc(capacity * NFA_STATE_SIZE);
     if (data == 0i64) {
-        drop(npk_core_dalloc(arena_ptr));
-        pass(0i64);
+        drop npk_core_dalloc(arena_ptr);
+        pass 0i64;
     }
     
-    drop(npk_mem_write_int64(arena_ptr, 0i64, data));
-    drop(npk_mem_write_int64(arena_ptr, 8i64, capacity));
-    drop(npk_mem_write_int64(arena_ptr, 16i64, 0i64));
+    drop npk_mem_write_int64(arena_ptr, 0i64, data);
+    drop npk_mem_write_int64(arena_ptr, 8i64, capacity);
+    drop npk_mem_write_int64(arena_ptr, 16i64, 0i64);
     
-    pass(arena_ptr);
+    pass arena_ptr;
 };
 
 pub func:regex_arena_alloc = int64(int64:arena_ptr, int32:opcode, int32:match_char) {
@@ -34,35 +34,35 @@ pub func:regex_arena_alloc = int64(int64:arena_ptr, int32:opcode, int32:match_ch
     int64:cursor   = npk_mem_read_int64(arena_ptr, 16i64);
     
     if (cursor >= capacity) {
-        pass(0i64);
+        pass 0i64;
     }
     
     int64:data = npk_mem_read_int64(arena_ptr, 0i64);
     int64:node = data + (cursor * NFA_STATE_SIZE);
     
-    drop(npk_mem_write_int64(arena_ptr, 16i64, cursor + 1i64));
+    drop npk_mem_write_int64(arena_ptr, 16i64, cursor + 1i64);
     
-    drop(npk_mem_write_int32(node, 0i64, opcode));
-    drop(npk_mem_write_int32(node, 4i64, match_char));
+    drop npk_mem_write_int32(node, 0i64, opcode);
+    drop npk_mem_write_int32(node, 4i64, match_char);
     
     // Clear the rest
-    drop(npk_mem_write_int64(node, 8i64, 0i64)); // out1
-    drop(npk_mem_write_int64(node, 16i64, 0i64)); // out2
-    drop(npk_mem_write_int64(node, 24i64, 0i64)); // charset
-    drop(npk_mem_write_int64(node, 32i64, 0i64)); // charset
-    drop(npk_mem_write_int64(node, 40i64, 0i64)); // charset
-    drop(npk_mem_write_int64(node, 48i64, 0i64)); // charset
-    drop(npk_mem_write_int64(node, 56i64, 0i64)); // visited_gen
+    drop npk_mem_write_int64(node, 8i64, 0i64); // out1
+    drop npk_mem_write_int64(node, 16i64, 0i64); // out2
+    drop npk_mem_write_int64(node, 24i64, 0i64); // charset
+    drop npk_mem_write_int64(node, 32i64, 0i64); // charset
+    drop npk_mem_write_int64(node, 40i64, 0i64); // charset
+    drop npk_mem_write_int64(node, 48i64, 0i64); // charset
+    drop npk_mem_write_int64(node, 56i64, 0i64); // visited_gen
     
-    pass(node);
+    pass node;
 };
 
 pub func:regex_arena_destroy = NIL(int64:arena_ptr) {
-    if (arena_ptr == 0i64) { pass(NIL); }
+    if (arena_ptr == 0i64) { pass NIL; }
     int64:data = npk_mem_read_int64(arena_ptr, 0i64);
     if (data != 0i64) {
-        drop(npk_core_dalloc(data));
+        drop npk_core_dalloc(data);
     }
-    drop(npk_core_dalloc(arena_ptr));
-    pass(NIL);
+    drop npk_core_dalloc(arena_ptr);
+    pass NIL;
 };

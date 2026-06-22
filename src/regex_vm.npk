@@ -4,70 +4,95 @@ use "regex_types.npk".*;
 use "ast_types.npk".*;
 use "regex_arena.npk".*;
 use "util/error_codes.npk".*;
+extern "nitpick_libc_sys" { func:npk_tlc_batch_alloc = int64(int64:size); }
 use "util/mem_primitives.npk".*;
 
+
+
+func:apush_list = int64(int64:list_ah, int64:val) {
+    int64:sz = npk_mem_read_int64(list_ah, 0i64);
+    drop(npk_mem_write_int64(list_ah, 8i64 + sz * 8i64, val));
+    drop(npk_mem_write_int64(list_ah, 0i64, sz + 1i64));
+    pass 0i64;
+};
+
+func:apop_list = int64(int64:list_ah) {
+    int64:sz = npk_mem_read_int64(list_ah, 0i64);
+    int64:val = npk_mem_read_int64(list_ah, 8i64 + (sz - 1i64) * 8i64);
+    drop(npk_mem_write_int64(list_ah, 0i64, sz - 1i64));
+    pass val;
+};
+
+func:asize_list = int64(int64:list_ah) {
+    pass npk_mem_read_int64(list_ah, 0i64);
+};
+
+func:aclear_list = int64(int64:list_ah) {
+    drop(npk_mem_write_int64(list_ah, 0i64, 0i64));
+    pass 0i64;
+};
+
 func:add_state = int64(int64:start_state, int64:list_ah, int64:visit_gen, int64:visited_arr, int64:arena_data, int64:work_ah) {
-    if (start_state == 0i64) { pass(0i64); }
+    if (start_state == 0i64) { pass 0i64; }
     
-    apush(work_ah, start_state);
+    drop(apush_list(work_ah, start_state));
     
-    when (asize(work_ah) > 0i64) {
-        int64:state = apop(work_ah);
+    when (raw asize_list(work_ah) > 0i64) {
+        int64:state = raw apop_list(work_ah);
         
         int64:state_idx = (state - arena_data) / 64i64;
         int64:last_visit = npk_mem_read_int64(visited_arr, state_idx * 8i64);
         
         if (last_visit != visit_gen) {
-            drop(npk_mem_write_int64(visited_arr, state_idx * 8i64, visit_gen));
-            wild NfaState->:state_ptr = state;
-            int32:opcode = state_ptr.opcode;
-            int64:out1 = state_ptr.out1;
-            int64:out2 = state_ptr.out2;
+            drop npk_mem_write_int64(visited_arr, state_idx * 8i64, visit_gen);
+            
+            int32:opcode = npk_mem_read_int32(state, 0i64);
+            int64:out1 = npk_mem_read_int64(state, 8i64);
+            int64:out2 = npk_mem_read_int64(state, 16i64);
             
             if (opcode == OP_SPLIT) {
-                if (out2 != 0i64) { apush(work_ah, out2); }
-                if (out1 != 0i64) { apush(work_ah, out1); }
+                if (out2 != 0i64) { drop(apush_list(work_ah, out2)); }
+                if (out1 != 0i64) { drop(apush_list(work_ah, out1)); }
             } else if (opcode == OP_JMP) {
-                if (out1 != 0i64) { apush(work_ah, out1); }
+                if (out1 != 0i64) { drop(apush_list(work_ah, out1)); }
             } else {
-                apush(list_ah, state);
+                drop(apush_list(list_ah, state));
             }
         }
     }
-    pass(0i64);
+    pass 0i64;
 };
 
 pub func:regex_vm_match = int32(int64:arena_ptr, int64:start_state, int64:text, int64:text_len) {
-    if (start_state == 0i64) { pass(0i32); }
+    if (start_state == 0i64) { pass 0i32; }
     
     int64:capacity = npk_mem_read_int64(arena_ptr, 8i64);
     int64:arena_data = npk_mem_read_int64(arena_ptr, 0i64);
     
     // Leverage astack for zero-heap evaluation
-    int64:clist_ah = astack(capacity * 8i64);
-    int64:nlist_ah = astack(capacity * 8i64);
-    int64:work_ah = astack(capacity * 8i64);
+    int64:clist_ah = npk_tlc_batch_alloc(capacity * 8i64 + 8i64); drop(npk_mem_write_int64(clist_ah, 0i64, 0i64));
+    int64:nlist_ah = npk_tlc_batch_alloc(capacity * 8i64 + 8i64); drop(npk_mem_write_int64(nlist_ah, 0i64, 0i64));
+    int64:work_ah = npk_tlc_batch_alloc(capacity * 8i64 + 8i64); drop(npk_mem_write_int64(work_ah, 0i64, 0i64));
     
-    extern "nitpick_libc_sys" { func:npk_tlc_batch_alloc = int64(int64:size); }
     int64:visited_arr = npk_tlc_batch_alloc(capacity * 8i64);
     int64:vi = 0i64;
     when (vi < capacity) {
-        drop(npk_mem_write_int64(visited_arr, vi * 8i64, 0i64));
+        drop npk_mem_write_int64(visited_arr, vi * 8i64, 0i64);
         vi = vi + 1i64;
     }
     
     int64:visit_gen = 1i64;
     
-    drop(add_state(start_state, clist_ah, visit_gen, visited_arr, arena_data));
+    drop add_state(start_state, clist_ah, visit_gen, visited_arr, arena_data, work_ah);
     
     int64:idx = 0i64;
     int32:matched = 0i32;
     int32:running = 1i32;
     
     when (running == 1i32) {
-        drop(add_state(start_state, clist_ah, visit_gen, visited_arr, arena_data, work_ah));
+        drop add_state(start_state, clist_ah, visit_gen, visited_arr, arena_data, work_ah);
         
-        if (asize(clist_ah) == 0i64) {
+        if (raw asize_list(clist_ah) == 0i64) {
             running = 0i32;
         } else {
             int64:c = -1i64;
@@ -77,24 +102,23 @@ pub func:regex_vm_match = int32(int64:arena_ptr, int64:start_state, int64:text, 
             
             visit_gen = visit_gen + 1i64;
             
-            when (asize(clist_ah) > 0i64) {
-                int64:state = apop(clist_ah);
-                wild NfaState->:state_ptr = state;
-                int32:opcode = state_ptr.opcode;
+            when (raw asize_list(clist_ah) > 0i64) {
+                int64:state = raw apop_list(clist_ah);
+                int32:opcode = npk_mem_read_int32(state, 0i64);
                 
                 if (opcode == OP_MATCH) {
                     matched = 1i32;
                     running = 0i32;
                 } else if (c != -1i64) {
                     if (opcode == OP_CHAR) {
-                        int32:match_char = state_ptr.match_char;
+                        int32:match_char = npk_mem_read_int32(state, 4i64);
                         if (c == (match_char => int64)) {
-                            int64:out1 = state_ptr.out1;
-                            drop(add_state(out1, nlist_ah, visit_gen, visited_arr, arena_data, work_ah));
+                            int64:out1 = npk_mem_read_int64(state, 8i64);
+                            drop add_state(out1, nlist_ah, visit_gen, visited_arr, arena_data, work_ah);
                         }
                     } else if (opcode == OP_ANY) {
-                        int64:out1 = state_ptr.out1;
-                        drop(add_state(out1, nlist_ah, visit_gen, visited_arr, arena_data, work_ah));
+                        int64:out1 = npk_mem_read_int64(state, 8i64);
+                        drop add_state(out1, nlist_ah, visit_gen, visited_arr, arena_data, work_ah);
                     }
                 }
             }
@@ -114,5 +138,5 @@ pub func:regex_vm_match = int32(int64:arena_ptr, int64:start_state, int64:text, 
         }
     }
     
-    pass(matched);
+    pass matched;
 };
