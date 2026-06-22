@@ -6,29 +6,34 @@ use "regex_arena.npk".*;
 use "util/error_codes.npk".*;
 use "util/mem_primitives.npk".*;
 
-func:add_state = int64(int64:state, int64:list_ah, int64:visit_gen, int64:visited_arr, int64:arena_data) {
-    if (state == 0i64) { pass(0i64); }
+func:add_state = int64(int64:start_state, int64:list_ah, int64:visit_gen, int64:visited_arr, int64:arena_data, int64:work_ah) {
+    if (start_state == 0i64) { pass(0i64); }
     
-    int64:state_idx = (state - arena_data) / 64i64;
-    int64:last_visit = npk_mem_read_int64(visited_arr, state_idx * 8i64);
-    if (last_visit == visit_gen) { pass(0i64); }
+    apush(work_ah, start_state);
     
-    drop(npk_mem_write_int64(visited_arr, state_idx * 8i64, visit_gen));
-    
-    int32:opcode = npk_mem_read_int32(state, 0i64);
-    int64:out1 = npk_mem_read_int64(state, 8i64);
-    int64:out2 = npk_mem_read_int64(state, 16i64);
-    
-    if (opcode == OP_SPLIT) {
-        drop(add_state(out1, list_ah, visit_gen, visited_arr, arena_data));
-        drop(add_state(out2, list_ah, visit_gen, visited_arr, arena_data));
-        pass(0i64);
-    } else if (opcode == OP_JMP) {
-        drop(add_state(out1, list_ah, visit_gen, visited_arr, arena_data));
-        pass(0i64);
+    when (asize(work_ah) > 0i64) {
+        int64:state = apop(work_ah);
+        
+        int64:state_idx = (state - arena_data) / 64i64;
+        int64:last_visit = npk_mem_read_int64(visited_arr, state_idx * 8i64);
+        
+        if (last_visit != visit_gen) {
+            drop(npk_mem_write_int64(visited_arr, state_idx * 8i64, visit_gen));
+            
+            int32:opcode = npk_mem_read_int32(state, 0i64);
+            int64:out1 = npk_mem_read_int64(state, 8i64);
+            int64:out2 = npk_mem_read_int64(state, 16i64);
+            
+            if (opcode == OP_SPLIT) {
+                if (out2 != 0i64) { apush(work_ah, out2); }
+                if (out1 != 0i64) { apush(work_ah, out1); }
+            } else if (opcode == OP_JMP) {
+                if (out1 != 0i64) { apush(work_ah, out1); }
+            } else {
+                apush(list_ah, state);
+            }
+        }
     }
-    
-    apush(list_ah, state);
     pass(0i64);
 };
 
@@ -41,6 +46,7 @@ pub func:regex_vm_match = int32(int64:arena_ptr, int64:start_state, int64:text, 
     // Leverage astack for zero-heap evaluation
     int64:clist_ah = astack(capacity * 8i64);
     int64:nlist_ah = astack(capacity * 8i64);
+    int64:work_ah = astack(capacity * 8i64);
     
     extern "nitpick_libc_sys" { func:npk_tlc_batch_alloc = int64(int64:size); }
     int64:visited_arr = npk_tlc_batch_alloc(capacity * 8i64);
@@ -59,6 +65,8 @@ pub func:regex_vm_match = int32(int64:arena_ptr, int64:start_state, int64:text, 
     int32:running = 1i32;
     
     when (running == 1i32) {
+        drop(add_state(start_state, clist_ah, visit_gen, visited_arr, arena_data, work_ah));
+        
         if (asize(clist_ah) == 0i64) {
             running = 0i32;
         } else {
@@ -81,11 +89,11 @@ pub func:regex_vm_match = int32(int64:arena_ptr, int64:start_state, int64:text, 
                         int32:match_char = npk_mem_read_int32(state, 4i64);
                         if (c == (match_char => int64)) {
                             int64:out1 = npk_mem_read_int64(state, 8i64);
-                            drop(add_state(out1, nlist_ah, visit_gen, visited_arr, arena_data));
+                            drop(add_state(out1, nlist_ah, visit_gen, visited_arr, arena_data, work_ah));
                         }
                     } else if (opcode == OP_ANY) {
                         int64:out1 = npk_mem_read_int64(state, 8i64);
-                        drop(add_state(out1, nlist_ah, visit_gen, visited_arr, arena_data));
+                        drop(add_state(out1, nlist_ah, visit_gen, visited_arr, arena_data, work_ah));
                     }
                 }
             }

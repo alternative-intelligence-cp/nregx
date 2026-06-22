@@ -9,7 +9,7 @@ extern "nitpick_libc_sys" {
 }
 
 pub func:extract_literal_prefix = int64(int64:ast_root, int64:pattern) {
-    int64:ext = npk_tlc_batch_alloc(24i64);
+    int64:ext = npk_core_alloc(24i64);
     drop(npk_mem_write_int32(ext, 0i64, 0i32)); // has_prefix
     drop(npk_mem_write_int64(ext, 8i64, 0i64)); // ptr
     drop(npk_mem_write_int64(ext, 16i64, 0i64)); // len
@@ -54,8 +54,44 @@ pub func:extract_literal_prefix = int64(int64:ast_root, int64:pattern) {
     }
     
     if (literal_count > 0i32) {
+        int64:str_buf = npk_core_alloc(literal_count => int64);
+        
+        int64:c_idx = 0i64;
+        curr = ast_root;
+        stack_size = 0i32;
+        running = 1i32;
+        
+        when (running == 1i32) {
+            if (curr != 0i64) {
+                apush(ah, curr);
+                stack_size = stack_size + 1i32;
+                curr = npk_mem_read_int64(curr, 8i64);
+            } else {
+                if (stack_size > 0i32) {
+                    curr = apop(ah);
+                    stack_size = stack_size - 1i32;
+                    
+                    int32:type = npk_mem_read_int32(curr, 0i64);
+                    if (type == AST_LITERAL) {
+                        int32:val = npk_mem_read_int32(curr, 4i64);
+                        drop(npk_mem_write_byte(str_buf, c_idx, val => int64));
+                        c_idx = c_idx + 1i64;
+                    } else if (type == AST_CONCAT) {
+                    } else {
+                        running = 0i32;
+                    }
+                    
+                    if (running == 1i32) {
+                        curr = npk_mem_read_int64(curr, 16i64);
+                    }
+                } else {
+                    running = 0i32;
+                }
+            }
+        }
+        
         drop(npk_mem_write_int32(ext, 0i64, 1i32));
-        drop(npk_mem_write_int64(ext, 8i64, pattern)); // point to start of pattern
+        drop(npk_mem_write_int64(ext, 8i64, str_buf));
         drop(npk_mem_write_int64(ext, 16i64, literal_count => int64));
     }
     
