@@ -182,7 +182,6 @@ func:parse_atom = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth) {
 };
 
 pub func:parse_regex_ast = int64(int64:tokens, int32:count) {
-    defer { npk_tlc_batch_flush(); }
     
     if (count == 0i32) {
         pass(0i64);

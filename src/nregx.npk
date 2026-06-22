@@ -11,12 +11,17 @@ use "prefix_extractor.npk".*;
 use "util/error_codes.npk".*;
 use "util/mem_primitives.npk".*;
 
+extern "nitpick_libc_sys" {
+    func:npk_tlc_batch_flush = void();
+}
+
 pub func:nregx_init = int32() {
     drop(regex_cache_init());
     pass(0i32);
 };
 
 func:compile_and_cache = int64(int64:pattern, int64:pattern_len) {
+    defer { npk_tlc_batch_flush(); }
     // 1. Check cache
     int64:entry = raw regex_cache_get(pattern, pattern_len);
     if (entry != 0i64) {
@@ -55,6 +60,7 @@ pub func:nregx_match = int32(int64:pattern, int64:pattern_len, int64:text, int64
 };
 
 pub func:nregx_extract = int64(int64:pattern, int64:pattern_len) {
+    defer { npk_tlc_batch_flush(); }
     int64:tokens = npk_core_alloc(pattern_len * 8i64);
     if (tokens == 0i64) { pass(0i64); }
     

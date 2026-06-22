@@ -10,7 +10,7 @@ use "util/mem_primitives.npk".*;
 // int64: cursor (current allocation count)
 
 pub fixed int64:REGEX_ARENA_SIZE = 24i64;
-pub fixed int64:NFA_STATE_SIZE   = 48i64; // opcode(4), match_char(4), out1(8), out2(8), charset(24)
+pub fixed int64:NFA_STATE_SIZE   = 64i64; // opcode(4), match_char(4), out1(8), out2(8), charset(32), visited_gen(8)
 
 pub func:regex_arena_init = int64(int64:capacity) {
     int64:arena_ptr = npk_core_alloc(REGEX_ARENA_SIZE);
@@ -51,6 +51,8 @@ pub func:regex_arena_alloc = int64(int64:arena_ptr, int32:opcode, int32:match_ch
     drop(npk_mem_write_int64(node, 24i64, 0i64)); // charset
     drop(npk_mem_write_int64(node, 32i64, 0i64)); // charset
     drop(npk_mem_write_int64(node, 40i64, 0i64)); // charset
+    drop(npk_mem_write_int64(node, 48i64, 0i64)); // charset
+    drop(npk_mem_write_int64(node, 56i64, 0i64)); // visited_gen
     
     pass(node);
 };

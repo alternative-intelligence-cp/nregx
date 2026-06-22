@@ -12,6 +12,8 @@ extern "nitpick_libc_sys" {
     func:npk_shim_rwlock_rdlock = int32(int64:handle);
     func:npk_shim_rwlock_wrlock = int32(int64:handle);
     func:npk_shim_rwlock_unlock = int32(int64:handle);
+    func:npk_shim_atomic_int64_fetch_add = int64(int64:ptr, int64:val);
+    func:npk_shim_atomic_int64_fetch_sub = int64(int64:ptr, int64:val);
 }
 
 // Global rwlock, list head, and size bounds
@@ -63,6 +65,9 @@ pub func:regex_cache_get = int64(int64:pattern, int64:pattern_len) {
             int32:eq = raw strings_equal(pattern, pattern_len, p_str, p_len);
             if (eq == 1i32) {
                 found = curr;
+                int64:ref_count_ptr = npk_mem_read_int64(curr, 48i64);
+                drop(npk_shim_atomic_int64_fetch_add(ref_count_ptr, 1i64));
+                
                 if (prev != 0i64) {
                     int64:next = npk_mem_read_int64(curr, 40i64);
                     drop(npk_mem_write_int64(prev, 40i64, next));
@@ -109,15 +114,25 @@ pub func:regex_cache_insert = int64(int64:pattern, int64:pattern_len, int64:aren
             int64:p_str = npk_mem_read_int64(curr, 0i64);
             int64:c_arena = npk_mem_read_int64(curr, 16i64);
             
-            drop(npk_core_dalloc(p_str));
-            drop(regex_arena_destroy(c_arena));
-            drop(npk_core_dalloc(curr));
+            drop(npk_mem_write_int64(curr, 56i64, 1i64)); // is_unlinked = 1
+            
+            int64:ref_count_ptr = npk_mem_read_int64(curr, 48i64);
+            int64:refs = npk_mem_read_int64(ref_count_ptr, 0i64);
+            
+            if (refs == 0i64) {
+                drop(npk_core_dalloc(p_str));
+                drop(regex_arena_destroy(c_arena));
+                int64:hit_ptr = npk_mem_read_int64(curr, 32i64);
+                drop(npk_core_dalloc(hit_ptr));
+                drop(npk_core_dalloc(ref_count_ptr));
+                drop(npk_core_dalloc(curr));
+            }
             
             g_regex_cache_size = g_regex_cache_size - 1i64;
         }
     }
     
-    int64:entry = npk_core_alloc(48i64);
+    int64:entry = npk_core_alloc(64i64);
     if (entry == 0i64) { pass(0i64); }
     
     // Copy the string
@@ -140,8 +155,17 @@ pub func:regex_cache_insert = int64(int64:pattern, int64:pattern_len, int64:aren
     drop(npk_mem_write_int64(entry, 24i64, start_state));
     
     // hit_counter
-    AtomicInt64:hit_counter = raw AtomicInt64.create(0i64);
-    drop(npk_mem_write_int64(entry, 32i64, hit_counter.handle));
+    int64:hit_ptr = npk_core_alloc(8i64);
+    drop(npk_mem_write_int64(hit_ptr, 0i64, 0i64));
+    drop(npk_mem_write_int64(entry, 32i64, hit_ptr));
+    
+    // ref_count
+    int64:ref_ptr = npk_core_alloc(8i64);
+    drop(npk_mem_write_int64(ref_ptr, 0i64, 1i64)); // initial ref for the caller
+    drop(npk_mem_write_int64(entry, 48i64, ref_ptr));
+    
+    // is_unlinked
+    drop(npk_mem_write_int64(entry, 56i64, 0i64));
     
     // insert at head
     drop(npk_mem_write_int64(entry, 40i64, g_regex_cache_head));
@@ -153,10 +177,8 @@ pub func:regex_cache_insert = int64(int64:pattern, int64:pattern_len, int64:aren
 
 pub func:regex_cache_increment_hit = int32(int64:entry) {
     if (entry == 0i64) { pass(0i32); }
-    int64:handle = npk_mem_read_int64(entry, 32i64);
-    AtomicInt64:hit_counter = AtomicInt64{handle: handle};
-    int32:RELAXED = raw AtomicInt64.RELAXED();
-    drop(AtomicInt64.add(hit_counter, 1i64, RELAXED));
+    int64:hit_ptr = npk_mem_read_int64(entry, 32i64);
+    drop(npk_shim_atomic_int64_fetch_add(hit_ptr, 1i64));
     pass(1i32);
 };
 
@@ -169,5 +191,21 @@ pub func:regex_execute = int32(int64:entry, int64:text, int64:text_len) {
     
     // Call the VM
     int32:match = raw regex_vm_match(arena_ptr, start_state, text, text_len);
+    
+    // Decrement ref count
+    int64:ref_count_ptr = npk_mem_read_int64(entry, 48i64);
+    int64:old_ref = npk_shim_atomic_int64_fetch_sub(ref_count_ptr, 1i64);
+    
+    int64:is_unlinked = npk_mem_read_int64(entry, 56i64);
+    if ((is_unlinked == 1i64) && (old_ref == 1i64)) {
+        int64:p_str = npk_mem_read_int64(entry, 0i64);
+        drop(npk_core_dalloc(p_str));
+        drop(regex_arena_destroy(arena_ptr));
+        int64:hit_ptr = npk_mem_read_int64(entry, 32i64);
+        drop(npk_core_dalloc(hit_ptr));
+        drop(npk_core_dalloc(ref_count_ptr));
+        drop(npk_core_dalloc(entry));
+    }
+    
     pass(match);
 };
