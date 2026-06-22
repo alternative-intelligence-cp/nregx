@@ -119,12 +119,10 @@ pub func:regex_cache_insert = int64(int64:pattern, int64:pattern_len, int64:aren
             int64:p_str = curr_ptr.p_str;
             int64:c_arena = curr_ptr.arena_ptr;
             
-            curr_ptr.is_unlinked = 1i64;
-            
             Handle<AtomicInt64>:ref_count_ptr = curr_ptr.ref_count;
-            int64:refs = npk_mem_read_int64(ref_count_ptr => int64, 0i64);
+            int64:refs = npk_shim_atomic_int64_fetch_sub(ref_count_ptr => int64, 1i64, 0i32);
             
-            if (refs == 0i64) {
+            if (refs == 1i64) {
                 drop npk_core_dalloc(p_str);
                 drop regex_arena_destroy(c_arena);
                 Handle<AtomicInt64>:hit_ptr = curr_ptr.hit_counter;
@@ -167,11 +165,8 @@ pub func:regex_cache_insert = int64(int64:pattern, int64:pattern_len, int64:aren
     
     // ref_count
     int64:ref_ptr = npk_core_alloc(8i64);
-    drop npk_mem_write_int64(ref_ptr, 0i64, 1i64); // initial ref for the caller
+    drop npk_mem_write_int64(ref_ptr, 0i64, 2i64); // 1 for cache, 1 for caller
     entry_ptr.ref_count = ref_ptr => Handle<AtomicInt64>;
-    
-    // is_unlinked
-    entry_ptr.is_unlinked = 0i64;
     
     // insert at head
     entry_ptr.next = g_regex_cache_head => Handle<CacheEntry>;
@@ -204,8 +199,7 @@ pub func:regex_execute = int64(int64:entry, int64:text, int64:text_len) {
     Handle<AtomicInt64>:ref_count_ptr = entry_ptr.ref_count;
     int64:old_ref = npk_shim_atomic_int64_fetch_sub(ref_count_ptr => int64, 1i64, 0i32);
     
-    int64:is_unlinked = entry_ptr.is_unlinked;
-    if ((is_unlinked == 1i64) && (old_ref == 1i64)) {
+    if (old_ref == 1i64) {
         int64:p_str = entry_ptr.p_str;
         drop npk_core_dalloc(p_str);
         drop regex_arena_destroy(arena_ptr);

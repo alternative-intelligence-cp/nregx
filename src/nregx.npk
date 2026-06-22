@@ -52,6 +52,7 @@ func:compile_and_cache = int64(int64:pattern, int64:pattern_len) {
 };
 
 pub func:nregx_match = int64(int64:pattern, int64:pattern_len, int64:text, int64:text_len) {
+    defer { npk_tlc_batch_flush(); }
     int64:entry = raw compile_and_cache(pattern, pattern_len);
     if (entry == 0i64) { pass 0i64; } // compilation failed
     

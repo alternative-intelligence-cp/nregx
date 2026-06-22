@@ -38,6 +38,7 @@ pub func:lex_pattern = int32(int64:pattern, limit<r_valid_regex_len> int64:len, 
     when (i < len) {
         int64:c = npk_mem_read_byte(pattern, i);
         wild Token->:tok_ptr = @cast_unchecked<Token->>(tokens + ((token_count => int64) * 8i64));
+        tok_ptr.val = c => int32;
         
         if (c == 42i64) { 
             tok_ptr.type = TOKEN_STAR;
@@ -65,7 +66,6 @@ pub func:lex_pattern = int32(int64:pattern, limit<r_valid_regex_len> int64:len, 
             tok_ptr.type = TOKEN_ESCAPE;
         } else { 
             tok_ptr.type = TOKEN_LITERAL;
-            tok_ptr.val = c => int32;
         }
         
         token_count = token_count + 1i32;
