@@ -1,8 +1,8 @@
 // prefix_extractor.npk — Extracts literal prefixes from AST
 
 use "ast_types.npk".*;
-use "str_view.npk".*;
-use "mem_primitives.npk".*;
+use "util/str_view.npk".*;
+use "util/mem_primitives.npk".*;
 
 extern "nitpick_libc_sys" {
     func:npk_tlc_batch_alloc = int64(int64:size);

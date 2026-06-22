@@ -8,8 +8,8 @@ use "nfa_compiler.npk".*;
 use "regex_vm.npk".*;
 use "regex_cache.npk".*;
 use "prefix_extractor.npk".*;
-use "error_codes.npk".*;
-use "mem_primitives.npk".*;
+use "util/error_codes.npk".*;
+use "util/mem_primitives.npk".*;
 
 pub func:nregx_init = int32() {
     drop(regex_cache_init());

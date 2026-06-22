@@ -3,8 +3,8 @@
 use "regex_types.npk".*;
 use "ast_types.npk".*;
 use "regex_arena.npk".*;
-use "error_codes.npk".*;
-use "mem_primitives.npk".*;
+use "util/error_codes.npk".*;
+use "util/mem_primitives.npk".*;
 
 // A fragment represents a partially built NFA
 // start: Handle<NfaState>

@@ -1,8 +1,8 @@
 // regex_arena.npk — Generational Arena for NFA States
 
 use "regex_types.npk".*;
-use "error_codes.npk".*;
-use "mem_primitives.npk".*;
+use "util/error_codes.npk".*;
+use "util/mem_primitives.npk".*;
 
 // Arena structure:
 // int64: data_ptr (pointer to NfaState array)
