@@ -1,8 +1,30 @@
 use "../src/nregx.npk".*;
 
+extern "nitpick_libc_sys" {
+    func:exit = void(int32:code);
+    func:npk_core_alloc = int64(int64:size);
+    func:npk_core_dalloc = int64(int64:ptr);
+    func:npk_mem_write_byte = int64(int64:ptr, int64:offset, int64:val);
+}
+
 pub func:main = int32() {
     drop(nregx_init());
     
-    // test cache functionality
-    exit(0);
+    // We want to generate 2000 unique regex patterns and cache them.
+    // MAX_CACHE_SIZE is 1000, so this will trigger LRU evictions.
+    
+    int64:dyn_pat = npk_core_alloc(4i64);
+    drop(npk_mem_write_byte(dyn_pat, 0i64, 97i64)); // 'a'
+    drop(npk_mem_write_byte(dyn_pat, 1i64, 42i64)); // '*'
+    
+    int64:i = 0i64;
+    when (i < 2000i64) {
+        drop(npk_mem_write_byte(dyn_pat, 2i64, (i % 26i64) + 97i64)); 
+        drop(nregx_match(dyn_pat, 3i64, "a", 1i64));
+        i = i + 1i64;
+    }
+    
+    drop(npk_core_dalloc(dyn_pat));
+    
+    exit(0i32);
 };

@@ -1,8 +1,31 @@
 use "../src/nregx.npk".*;
 
+extern "nitpick_libc_sys" {
+    func:exit = void(int32:code);
+}
+
+func:assert_match = int32(int64:pattern, int64:plen, int64:text, int64:tlen, int32:expect) {
+    int32:res = nregx_match(pattern, plen, text, tlen);
+    if (res != expect) {
+        exit(1i32);
+    }
+    pass(0i32);
+};
+
 pub func:main = int32() {
     drop(nregx_init());
     
-    // test basic functionality
-    exit(0);
+    // Pattern: a(b|c)+d?
+    int64:pattern = "a(b|c)+d?";
+    int64:plen = 9i64;
+    
+    drop(assert_match(pattern, plen, "ab", 2i64, 1i32));
+    drop(assert_match(pattern, plen, "ac", 2i64, 1i32));
+    drop(assert_match(pattern, plen, "abc", 3i64, 1i32));
+    drop(assert_match(pattern, plen, "abcd", 4i64, 1i32));
+    drop(assert_match(pattern, plen, "ad", 2i64, 0i32)); // + requires at least one b or c
+    drop(assert_match(pattern, plen, "a", 1i64, 0i32));
+    drop(assert_match(pattern, plen, "acbccd", 6i64, 1i32));
+    
+    exit(0i32);
 };
