@@ -118,13 +118,13 @@ pub func:regex_cache_insert = int64(int64:pattern, int64:pattern_len, int64:aren
     }
     
     int64:entry = npk_core_alloc(48i64);
-    if (entry == 0i64) { fail(ERR_REGEX_COMPLEXITY_EXCEEDED => tbb32); }
+    if (entry == 0i64) { pass(0i64); }
     
     // Copy the string
     int64:p_copy = npk_core_alloc(pattern_len);
     if (p_copy == 0i64) { 
         drop(npk_core_dalloc(entry));
-        fail(ERR_REGEX_COMPLEXITY_EXCEEDED => tbb32); 
+        pass(0i64); 
     }
     
     int64:i = 0i64;

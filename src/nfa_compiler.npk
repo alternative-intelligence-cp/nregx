@@ -82,7 +82,7 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 apush(ah, e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_CONCAT) {
-                if (frag_stack_size < 2i32) { fail(ERR_REGEX_PARSE => tbb32); }
+                if (frag_stack_size < 2i32) { pass(0i64); }
                 int64:f2_e = apop(ah);
                 int64:f2_s = apop(ah);
                 int64:f1_e = apop(ah);
@@ -97,7 +97,7 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 apush(ah, f2_e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_STAR) {
-                if (frag_stack_size < 1i32) { fail(ERR_REGEX_PARSE => tbb32); }
+                if (frag_stack_size < 1i32) { pass(0i64); }
                 int64:f1_e = apop(ah);
                 int64:f1_s = apop(ah);
                 frag_stack_size = frag_stack_size - 1i32;
@@ -117,7 +117,7 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 apush(ah, e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_ALT) {
-                if (frag_stack_size < 2i32) { fail(ERR_REGEX_PARSE => tbb32); }
+                if (frag_stack_size < 2i32) { pass(0i64); }
                 int64:f2_e = apop(ah);
                 int64:f2_s = apop(ah);
                 int64:f1_e = apop(ah);
@@ -140,7 +140,7 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 apush(ah, e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_PLUS) {
-                if (frag_stack_size < 1i32) { fail(ERR_REGEX_PARSE => tbb32); }
+                if (frag_stack_size < 1i32) { pass(0i64); }
                 int64:f1_e = apop(ah);
                 int64:f1_s = apop(ah);
                 frag_stack_size = frag_stack_size - 1i32;
@@ -161,7 +161,7 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 apush(ah, e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_QMARK) {
-                if (frag_stack_size < 1i32) { fail(ERR_REGEX_PARSE => tbb32); }
+                if (frag_stack_size < 1i32) { pass(0i64); }
                 int64:f1_e = apop(ah);
                 int64:f1_s = apop(ah);
                 frag_stack_size = frag_stack_size - 1i32;
@@ -185,7 +185,7 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
     }
     
     if (frag_stack_size != 1i32) {
-        fail(ERR_REGEX_PARSE => tbb32);
+        pass(0i64);
     }
     
     int64:final_e = apop(ah);

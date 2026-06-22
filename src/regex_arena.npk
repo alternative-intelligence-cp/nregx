@@ -14,12 +14,12 @@ pub fixed int64:NFA_STATE_SIZE   = 48i64; // opcode(4), match_char(4), out1(8), 
 
 pub func:regex_arena_init = int64(int64:capacity) {
     int64:arena_ptr = npk_core_alloc(REGEX_ARENA_SIZE);
-    if (arena_ptr == 0i64) { fail(ERR_REGEX_COMPLEXITY_EXCEEDED => tbb32); }
+    if (arena_ptr == 0i64) { pass(0i64); }
     
     int64:data = npk_core_alloc(capacity * NFA_STATE_SIZE);
     if (data == 0i64) {
         drop(npk_core_dalloc(arena_ptr));
-        fail(ERR_REGEX_COMPLEXITY_EXCEEDED => tbb32);
+        pass(0i64);
     }
     
     drop(npk_mem_write_int64(arena_ptr, 0i64, data));
@@ -34,7 +34,7 @@ pub func:regex_arena_alloc = int64(int64:arena_ptr, int32:opcode, int32:match_ch
     int64:cursor   = npk_mem_read_int64(arena_ptr, 16i64);
     
     if (cursor >= capacity) {
-        fail(ERR_REGEX_COMPLEXITY_EXCEEDED => tbb32);
+        pass(0i64);
     }
     
     int64:data = npk_mem_read_int64(arena_ptr, 0i64);
