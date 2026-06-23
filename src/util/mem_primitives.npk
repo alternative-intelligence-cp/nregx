@@ -9,10 +9,12 @@ extern "nitpick_libc_mem" {
     func:npk_mem_write_int64   = int64(int64:ptr, int64:offset, int64:val);
     func:npk_mem_copy          = int64(int64:dst, int64:src, int64:n);
     func:npk_mem_set           = int64(int64:dst, int64:val, int64:n);
+}
+
+extern "nitpick_libc_mem" {
     func:npk_mem_compare       = int64(int64:a, int64:b, int64:n);
     func:npk_mem_offset        = int64(int64:ptr, int64:offset);
     func:npk_mem_ptr_size      = int64();
-
     func:npk_core_alloc  = int64(int64:size);
     func:nitpick_libc_mem_calloc  = int64(int64:count, int64:size);
     func:nitpick_libc_mem_realloc = int64(int64:ptr, int64:size);

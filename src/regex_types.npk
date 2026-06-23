@@ -48,6 +48,6 @@ pub struct:CacheEntry = {
     int64:arena_ptr;
     int64:start_state;
     Handle<CacheEntry>: next;
-    Handle<AtomicInt64>: hit_counter;
-    Handle<AtomicInt64>: ref_count;
+    atomic<int32>->: hit_counter;
+    atomic<int32>->: ref_count;
 };
