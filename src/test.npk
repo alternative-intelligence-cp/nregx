@@ -31,13 +31,9 @@ pub func:main = int32() {
     drop npk_mem_write_byte(txt1, 1i64, 53i64); // '5'
     drop npk_mem_write_byte(txt1, 2i64, 98i64); // 'b'
     
-    int64:res1 = raw nregx_match(pat1, 7i64, txt1, 3i64);
-    if (res1 != 0i64) {
-        wild MatchResult->:res_ptr1 = @cast_unchecked<MatchResult->>(res1);
-        defer { free(res_ptr1); }
-        if (res_ptr1.matched == 1i32) {
-            // print
-        }
+    MatchResult:res1 = raw nregx_match(pat1, 7i64, txt1, 3i64);
+    if (res1.matched == 1i32) {
+        // print
     }
     
     // Test 2: ^a.$
@@ -51,13 +47,9 @@ pub func:main = int32() {
     drop npk_mem_write_byte(txt2, 0i64, 97i64); // 'a'
     drop npk_mem_write_byte(txt2, 1i64, 98i64); // 'b'
     
-    int64:res2 = raw nregx_match(pat2, 4i64, txt2, 2i64);
-    if (res2 != 0i64) {
-        wild MatchResult->:res_ptr2 = @cast_unchecked<MatchResult->>(res2);
-        defer { free(res_ptr2); }
-        if (res_ptr2.matched == 1i32) {
-            // print
-        }
+    MatchResult:res2 = raw nregx_match(pat2, 4i64, txt2, 2i64);
+    if (res2.matched == 1i32) {
+        // print
     }
     
     // Test 3: \d+
@@ -71,13 +63,9 @@ pub func:main = int32() {
     drop npk_mem_write_byte(txt3, 1i64, 50i64); // '2'
     drop npk_mem_write_byte(txt3, 2i64, 51i64); // '3'
     
-    int64:res3 = raw nregx_match(pat3, 3i64, txt3, 3i64);
-    if (res3 != 0i64) {
-        wild MatchResult->:res_ptr3 = @cast_unchecked<MatchResult->>(res3);
-        defer { free(res_ptr3); }
-        if (res_ptr3.matched == 1i32) {
-            // print
-        }
+    MatchResult:res3 = raw nregx_match(pat3, 3i64, txt3, 3i64);
+    if (res3.matched == 1i32) {
+        // print
     }
     
     // Test 4: match boundary
@@ -93,17 +81,12 @@ pub func:main = int32() {
     drop npk_mem_write_byte(txt4, 3i64, 98i64); // 'b'
     drop npk_mem_write_byte(txt4, 4i64, 98i64); // 'b'
     drop npk_mem_write_byte(txt4, 5i64, 99i64); // 'c'
-    
-    int64:res4 = raw nregx_match(pat4, 3i64, txt4, 6i64);
-    if (res4 != 0i64) {
-        wild MatchResult->:res_ptr4 = @cast_unchecked<MatchResult->>(res4);
-        defer { free(res_ptr4); }
-        if (res_ptr4.matched == 1i32) {
-            if ((res_ptr4.start_idx == 2i32) && (res_ptr4.end_idx == 6i32)) {
-                // print
-            } else {
-                // print
-            }
+    MatchResult:res4 = raw nregx_match(pat4, 3i64, txt4, 6i64);
+    if (res4.matched == 1i32) {
+        if ((res4.start_idx == 2i32) && (res4.end_idx == 6i32)) {
+            // print
+        } else {
+            // print
         }
     }
 
@@ -111,5 +94,6 @@ pub func:main = int32() {
 };
 
 pub func:failsafe = int32(tbb32:err) {
+    drop err;
     exit 1i32;
 };

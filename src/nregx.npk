@@ -11,9 +11,7 @@ use "prefix_extractor.npk".*;
 use "util/error_codes.npk".*;
 use "util/mem_primitives.npk".*;
 
-extern "nitpick_libc_sys" {
-    func:npk_tlc_batch_flush = void();
-}
+
 
 pub func:nregx_init = int32() {
     drop regex_cache_init();
@@ -21,7 +19,6 @@ pub func:nregx_init = int32() {
 };
 
 func:compile_and_cache = int64(int64:pattern, int64:pattern_len) {
-    defer { npk_tlc_batch_flush(); }
     // 1. Check cache
     int64:entry = raw regex_cache_get(pattern, pattern_len);
     if (entry != 0i64) {
@@ -51,17 +48,16 @@ func:compile_and_cache = int64(int64:pattern, int64:pattern_len) {
     pass entry;
 };
 
-pub func:nregx_match = int64(int64:pattern, int64:pattern_len, int64:text, int64:text_len) {
-    defer { npk_tlc_batch_flush(); }
+pub func:nregx_match = MatchResult(int64:pattern, int64:pattern_len, int64:text, int64:text_len) {
+    if (pattern_len <= 0i64) { pass MatchResult{matched: 0i32, start_idx: 0i32, end_idx: 0i32}; }
     int64:entry = raw compile_and_cache(pattern, pattern_len);
-    if (entry == 0i64) { pass 0i64; } // compilation failed
+    if (entry == 0i64) { pass MatchResult{matched: 0i32, start_idx: 0i32, end_idx: 0i32}; } // compilation failed
     
-    int64:match_res = raw regex_execute(entry, text, text_len);
+    MatchResult:match_res = raw regex_execute(entry, text, text_len);
     pass match_res;
 };
 
 pub func:nregx_extract = int64(int64:pattern, int64:pattern_len) {
-    defer { npk_tlc_batch_flush(); }
     int64:tokens = npk_core_alloc(pattern_len * 8i64);
     if (tokens == 0i64) { pass 0i64; }
     

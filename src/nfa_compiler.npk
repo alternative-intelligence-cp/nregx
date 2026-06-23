@@ -25,8 +25,8 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
     
     int32:trav_stack_size = 0i32;
     drop(npk_mem_write_int64(trav_stack, (trav_stack_size => int64) * 8i64, ast_root));
-    drop(npk_mem_write_int64(trav_stack, (trav_stack_size => int64) * 8i64, 0i64));
-    trav_stack_size = trav_stack_size + 1i32;
+    drop(npk_mem_write_int64(trav_stack, ((trav_stack_size + 1i32) => int64) * 8i64, 0i64));
+    trav_stack_size = trav_stack_size + 2i32;
     
     when (trav_stack_size > 0i32) {
         int64:state = npk_mem_read_int64(trav_stack, ((trav_stack_size - 1i32) => int64) * 8i64);
@@ -41,21 +41,21 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
         
         if (state == 0i64) {
             drop(npk_mem_write_int64(trav_stack, (trav_stack_size => int64) * 8i64, node));
-            drop(npk_mem_write_int64(trav_stack, (trav_stack_size => int64) * 8i64, 1i64));
-            trav_stack_size = trav_stack_size + 1i32;
+            drop(npk_mem_write_int64(trav_stack, ((trav_stack_size + 1i32) => int64) * 8i64, 1i64));
+            trav_stack_size = trav_stack_size + 2i32;
             if (left != 0i64) {
                 drop(npk_mem_write_int64(trav_stack, (trav_stack_size => int64) * 8i64, left));
-                drop(npk_mem_write_int64(trav_stack, (trav_stack_size => int64) * 8i64, 0i64));
-                trav_stack_size = trav_stack_size + 1i32;
+                drop(npk_mem_write_int64(trav_stack, ((trav_stack_size + 1i32) => int64) * 8i64, 0i64));
+                trav_stack_size = trav_stack_size + 2i32;
             }
         } else if (state == 1i64) {
             drop(npk_mem_write_int64(trav_stack, (trav_stack_size => int64) * 8i64, node));
-            drop(npk_mem_write_int64(trav_stack, (trav_stack_size => int64) * 8i64, 2i64));
-            trav_stack_size = trav_stack_size + 1i32;
+            drop(npk_mem_write_int64(trav_stack, ((trav_stack_size + 1i32) => int64) * 8i64, 2i64));
+            trav_stack_size = trav_stack_size + 2i32;
             if (right != 0i64) {
                 drop(npk_mem_write_int64(trav_stack, (trav_stack_size => int64) * 8i64, right));
-                drop(npk_mem_write_int64(trav_stack, (trav_stack_size => int64) * 8i64, 0i64));
-                trav_stack_size = trav_stack_size + 1i32;
+                drop(npk_mem_write_int64(trav_stack, ((trav_stack_size + 1i32) => int64) * 8i64, 0i64));
+                trav_stack_size = trav_stack_size + 2i32;
             }
         } else {
             // Process node

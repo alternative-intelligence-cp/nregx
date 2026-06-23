@@ -184,8 +184,8 @@ pub func:regex_cache_increment_hit = int32(int64:entry) {
     pass 1i32;
 };
 
-pub func:regex_execute = int64(int64:entry, int64:text, int64:text_len) {
-    if (entry == 0i64) { pass 0i64; }
+pub func:regex_execute = MatchResult(int64:entry, int64:text, int64:text_len) {
+    if (entry == 0i64) { pass MatchResult{matched: 0i32, start_idx: 0i32, end_idx: 0i32}; }
     drop regex_cache_increment_hit(entry);
     
     wild CacheEntry->:entry_ptr = @cast_unchecked<CacheEntry->>(@cast_unchecked<CacheEntry->>(entry));
@@ -193,7 +193,7 @@ pub func:regex_execute = int64(int64:entry, int64:text, int64:text_len) {
     int64:start_state = entry_ptr.start_state;
     
     // Call the VM
-    int64:match_res = raw regex_vm_match(arena_ptr, start_state, text, text_len);
+    MatchResult:match_res = raw regex_vm_match(arena_ptr, start_state, text, text_len);
     
     // Decrement ref count
     atomic<int32>->:ref_count_ptr = entry_ptr.ref_count;

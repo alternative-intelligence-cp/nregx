@@ -41,45 +41,72 @@ func:aclear_list = int64(int64:list_ah) {
 func:add_state = int64(int64:start_state, int64:list_ah, int64:visit_gen, int64:visited_arr, int64:arena_data, int64:work_ah, int64:idx, int64:text_len, int64:start_idx) {
     if (start_state == 0i64) { pass 0i64; }
     
-    drop(apush_list(work_ah, start_state, start_idx));
+    int64:start_state_idx = (start_state - arena_data) / 64i64;
+    if (npk_mem_read_int64(visited_arr, start_state_idx * 8i64) != visit_gen) {
+        drop npk_mem_write_int64(visited_arr, start_state_idx * 8i64, visit_gen);
+        drop(apush_list(work_ah, start_state, start_idx));
+    }
     
     when (raw asize_list(work_ah) > 0i64) {
         int64:state = raw apop_state(work_ah);
         int64:state_start_idx = raw apop_start_idx(work_ah);
         
-        int64:state_idx = (state - arena_data) / 64i64;
-        int64:last_visit = npk_mem_read_int64(visited_arr, state_idx * 8i64);
+        int32:opcode = npk_mem_read_int32(state, 0i64);
+        int64:out1 = npk_mem_read_int64(state, 8i64);
+        int64:out2 = npk_mem_read_int64(state, 16i64);
         
-        if (last_visit != visit_gen) {
-            drop npk_mem_write_int64(visited_arr, state_idx * 8i64, visit_gen);
-            
-            int32:opcode = npk_mem_read_int32(state, 0i64);
-            int64:out1 = npk_mem_read_int64(state, 8i64);
-            int64:out2 = npk_mem_read_int64(state, 16i64);
-            
-            if (opcode == OP_SPLIT) {
-                if (out2 != 0i64) { drop(apush_list(work_ah, out2, state_start_idx)); }
-                if (out1 != 0i64) { drop(apush_list(work_ah, out1, state_start_idx)); }
-            } else if (opcode == OP_JMP) {
-                if (out1 != 0i64) { drop(apush_list(work_ah, out1, state_start_idx)); }
-            } else if (opcode == OP_ASSERT_START) {
-                if (idx == 0i64) {
-                    if (out1 != 0i64) { drop(apush_list(work_ah, out1, state_start_idx)); }
+        if (opcode == OP_SPLIT) {
+            if (out2 != 0i64) {
+                int64:out2_idx = (out2 - arena_data) / 64i64;
+                if (npk_mem_read_int64(visited_arr, out2_idx * 8i64) != visit_gen) {
+                    drop npk_mem_write_int64(visited_arr, out2_idx * 8i64, visit_gen);
+                    drop(apush_list(work_ah, out2, state_start_idx));
                 }
-            } else if (opcode == OP_ASSERT_END) {
-                if (idx == text_len) {
-                    if (out1 != 0i64) { drop(apush_list(work_ah, out1, state_start_idx)); }
-                }
-            } else {
-                drop(apush_list(list_ah, state, state_start_idx));
             }
+            if (out1 != 0i64) {
+                int64:out1_idx = (out1 - arena_data) / 64i64;
+                if (npk_mem_read_int64(visited_arr, out1_idx * 8i64) != visit_gen) {
+                    drop npk_mem_write_int64(visited_arr, out1_idx * 8i64, visit_gen);
+                    drop(apush_list(work_ah, out1, state_start_idx));
+                }
+            }
+        } else if (opcode == OP_JMP) {
+            if (out1 != 0i64) {
+                int64:out1_idx = (out1 - arena_data) / 64i64;
+                if (npk_mem_read_int64(visited_arr, out1_idx * 8i64) != visit_gen) {
+                    drop npk_mem_write_int64(visited_arr, out1_idx * 8i64, visit_gen);
+                    drop(apush_list(work_ah, out1, state_start_idx));
+                }
+            }
+        } else if (opcode == OP_ASSERT_START) {
+            if (idx == 0i64) {
+                if (out1 != 0i64) {
+                    int64:out1_idx = (out1 - arena_data) / 64i64;
+                    if (npk_mem_read_int64(visited_arr, out1_idx * 8i64) != visit_gen) {
+                        drop npk_mem_write_int64(visited_arr, out1_idx * 8i64, visit_gen);
+                        drop(apush_list(work_ah, out1, state_start_idx));
+                    }
+                }
+            }
+        } else if (opcode == OP_ASSERT_END) {
+            if (idx == text_len) {
+                if (out1 != 0i64) {
+                    int64:out1_idx = (out1 - arena_data) / 64i64;
+                    if (npk_mem_read_int64(visited_arr, out1_idx * 8i64) != visit_gen) {
+                        drop npk_mem_write_int64(visited_arr, out1_idx * 8i64, visit_gen);
+                        drop(apush_list(work_ah, out1, state_start_idx));
+                    }
+                }
+            }
+        } else {
+            drop(apush_list(list_ah, state, state_start_idx));
         }
     }
     pass 0i64;
 };
 
-pub func:regex_vm_match = int64(int64:arena_ptr, int64:start_state, int64:text, int64:text_len) {
-    if (start_state == 0i64) { pass 0i64; }
+pub func:regex_vm_match = MatchResult(int64:arena_ptr, int64:start_state, int64:text, int64:text_len) {
+    if (start_state == 0i64) { pass MatchResult{matched: 0i32, start_idx: 0i32, end_idx: 0i32}; }
     
     int64:capacity = npk_mem_read_int64(arena_ptr, 8i64);
     int64:arena_data = npk_mem_read_int64(arena_ptr, 0i64);
@@ -164,13 +191,12 @@ pub func:regex_vm_match = int64(int64:arena_ptr, int64:start_state, int64:text, 
         }
     }
     
-    int64:res_ptr = 0i64;
     if (matched == 1i32) {
-        res_ptr = npk_core_alloc(12i64);
-        wild MatchResult->:m = @cast_unchecked<MatchResult->>(res_ptr);
-        m.matched = 1i32;
-        m.start_idx = final_start_idx => int32;
-        m.end_idx = idx => int32;
+        pass MatchResult{
+            matched: 1i32,
+            start_idx: final_start_idx => int32,
+            end_idx: idx => int32
+        };
     }
-    pass res_ptr;
+    pass MatchResult{matched: 0i32, start_idx: 0i32, end_idx: 0i32};
 };
