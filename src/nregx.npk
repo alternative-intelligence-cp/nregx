@@ -27,7 +27,7 @@ func:compile_and_cache = int64(int64:pattern, int64:pattern_len) {
     
     // 2. Lex pattern
     int64:tokens = npk_core_alloc(pattern_len * 8i64);
-    if (tokens == 0i64) { pass 0i64; }
+    if (tokens == 0i64) { fail ERR_REGEX_PARSE; }
     
     int32:token_count = raw lex_pattern(pattern, pattern_len, tokens);
     
@@ -59,7 +59,7 @@ pub func:nregx_match = MatchResult(int64:pattern, int64:pattern_len, int64:text,
 
 pub func:nregx_extract = int64(int64:pattern, int64:pattern_len) {
     int64:tokens = npk_core_alloc(pattern_len * 8i64);
-    if (tokens == 0i64) { pass 0i64; }
+    if (tokens == 0i64) { fail ERR_REGEX_PARSE; }
     
     int32:token_count = raw lex_pattern(pattern, pattern_len, tokens);
     int64:ast_root = raw parse_regex_ast(tokens, token_count);

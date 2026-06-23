@@ -10,13 +10,13 @@ use "util/mem_primitives.npk".*;
 
 pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
     if (ast_root == 0i64) {
-        pass 0i64;
+        fail ERR_REGEX_PARSE;
     }
     
-    int64:trav_stack = npk_tlc_batch_alloc(16384i64);
+    int64:trav_stack = npk_core_alloc(16384i64);
     
-    extern "nitpick_libc_sys" { func:npk_tlc_batch_alloc = int64(int64:size); }
-    int64:frag_stack = npk_tlc_batch_alloc(8192i64); // 4096 * 2 * 8 bytes
+    int64:frag_stack = npk_core_alloc(8192i64);
+    defer { drop npk_core_dalloc(trav_stack); drop npk_core_dalloc(frag_stack); } // 4096 * 2 * 8 bytes
     int32:frag_stack_size = 0i32;
     
     // Post-order traversal using an explicit stack
@@ -26,7 +26,8 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
     int32:trav_stack_size = 0i32;
     drop(npk_mem_write_int64(trav_stack, (trav_stack_size => int64) * 8i64, ast_root));
     drop(npk_mem_write_int64(trav_stack, ((trav_stack_size + 1i32) => int64) * 8i64, 0i64));
-    trav_stack_size = trav_stack_size + 2i32;
+    trav_stack_size = trav_stack_size + 1i32;
+    trav_stack_size = trav_stack_size + 1i32;
     
     when (trav_stack_size > 0i32) {
         int64:state = npk_mem_read_int64(trav_stack, ((trav_stack_size - 1i32) => int64) * 8i64);
@@ -34,38 +35,42 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
         trav_stack_size = trav_stack_size - 2i32;
         
         wild AstNode->:node_ptr = @cast_unchecked<AstNode->>(@cast_unchecked<AstNode->>(node));
-        int32:type = node_ptr.type;
-        int32:val  = node_ptr.val;
-        int64:left = node_ptr.left;
-        int64:right = node_ptr.right;
+        int32:type = node_ptr->type;
+        int32:val  = node_ptr->val;
+        int64:left = node_ptr->left;
+        int64:right = node_ptr->right;
         
         if (state == 0i64) {
             drop(npk_mem_write_int64(trav_stack, (trav_stack_size => int64) * 8i64, node));
             drop(npk_mem_write_int64(trav_stack, ((trav_stack_size + 1i32) => int64) * 8i64, 1i64));
-            trav_stack_size = trav_stack_size + 2i32;
+            trav_stack_size = trav_stack_size + 1i32;
+    trav_stack_size = trav_stack_size + 1i32;
             if (left != 0i64) {
                 drop(npk_mem_write_int64(trav_stack, (trav_stack_size => int64) * 8i64, left));
                 drop(npk_mem_write_int64(trav_stack, ((trav_stack_size + 1i32) => int64) * 8i64, 0i64));
-                trav_stack_size = trav_stack_size + 2i32;
+                trav_stack_size = trav_stack_size + 1i32;
+    trav_stack_size = trav_stack_size + 1i32;
             }
         } else if (state == 1i64) {
             drop(npk_mem_write_int64(trav_stack, (trav_stack_size => int64) * 8i64, node));
             drop(npk_mem_write_int64(trav_stack, ((trav_stack_size + 1i32) => int64) * 8i64, 2i64));
-            trav_stack_size = trav_stack_size + 2i32;
+            trav_stack_size = trav_stack_size + 1i32;
+    trav_stack_size = trav_stack_size + 1i32;
             if (right != 0i64) {
                 drop(npk_mem_write_int64(trav_stack, (trav_stack_size => int64) * 8i64, right));
                 drop(npk_mem_write_int64(trav_stack, ((trav_stack_size + 1i32) => int64) * 8i64, 0i64));
-                trav_stack_size = trav_stack_size + 2i32;
+                trav_stack_size = trav_stack_size + 1i32;
+    trav_stack_size = trav_stack_size + 1i32;
             }
         } else {
             // Process node
             if (type == AST_LITERAL) {
                 int64:s = raw regex_arena_alloc(arena_ptr, OP_CHAR, val);
-                if (s == 0i64) { pass 0i64; }
+                if (s == 0i64) { fail ERR_REGEX_PARSE; }
                 int64:e = raw regex_arena_alloc(arena_ptr, OP_MATCH, 0i32);
-                if (e == 0i64) { pass 0i64; }
+                if (e == 0i64) { fail ERR_REGEX_PARSE; }
                 wild NfaState->:s_ptr = @cast_unchecked<NfaState->>(@cast_unchecked<NfaState->>(s));
-                s_ptr.out1 = e;
+                s_ptr->out1 = e;
                 
                 // push fragment
                 int64:idx = (frag_stack_size => int64) * 16i64;
@@ -74,11 +79,11 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_ANY) {
                 int64:s = raw regex_arena_alloc(arena_ptr, OP_ANY, 0i32);
-                if (s == 0i64) { pass 0i64; }
+                if (s == 0i64) { fail ERR_REGEX_PARSE; }
                 int64:e = raw regex_arena_alloc(arena_ptr, OP_MATCH, 0i32);
-                if (e == 0i64) { pass 0i64; }
+                if (e == 0i64) { fail ERR_REGEX_PARSE; }
                 wild NfaState->:s_ptr = @cast_unchecked<NfaState->>(@cast_unchecked<NfaState->>(s));
-                s_ptr.out1 = e;
+                s_ptr->out1 = e;
                 
                 int64:idx = (frag_stack_size => int64) * 16i64;
                 drop npk_mem_write_int64(frag_stack, idx, s);
@@ -86,11 +91,11 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_CLASS) {
                 int64:s = raw regex_arena_alloc(arena_ptr, OP_CHAR_CLASS, 0i32);
-                if (s == 0i64) { pass 0i64; }
+                if (s == 0i64) { fail ERR_REGEX_PARSE; }
                 int64:e = raw regex_arena_alloc(arena_ptr, OP_MATCH, 0i32);
-                if (e == 0i64) { pass 0i64; }
+                if (e == 0i64) { fail ERR_REGEX_PARSE; }
                 wild NfaState->:s_ptr = @cast_unchecked<NfaState->>(@cast_unchecked<NfaState->>(s));
-                s_ptr.out1 = e;
+                s_ptr->out1 = e;
                 // Copy 32-byte bitmask from AstNode to NfaState
                 int64:j = 0i64;
                 when (j < 32i64) {
@@ -105,11 +110,11 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_ASSERT_START) {
                 int64:s = raw regex_arena_alloc(arena_ptr, OP_ASSERT_START, 0i32);
-                if (s == 0i64) { pass 0i64; }
+                if (s == 0i64) { fail ERR_REGEX_PARSE; }
                 int64:e = raw regex_arena_alloc(arena_ptr, OP_MATCH, 0i32);
-                if (e == 0i64) { pass 0i64; }
+                if (e == 0i64) { fail ERR_REGEX_PARSE; }
                 wild NfaState->:s_ptr = @cast_unchecked<NfaState->>(@cast_unchecked<NfaState->>(s));
-                s_ptr.out1 = e;
+                s_ptr->out1 = e;
                 
                 int64:idx = (frag_stack_size => int64) * 16i64;
                 drop npk_mem_write_int64(frag_stack, idx, s);
@@ -117,18 +122,18 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_ASSERT_END) {
                 int64:s = raw regex_arena_alloc(arena_ptr, OP_ASSERT_END, 0i32);
-                if (s == 0i64) { pass 0i64; }
+                if (s == 0i64) { fail ERR_REGEX_PARSE; }
                 int64:e = raw regex_arena_alloc(arena_ptr, OP_MATCH, 0i32);
-                if (e == 0i64) { pass 0i64; }
+                if (e == 0i64) { fail ERR_REGEX_PARSE; }
                 wild NfaState->:s_ptr = @cast_unchecked<NfaState->>(@cast_unchecked<NfaState->>(s));
-                s_ptr.out1 = e;
+                s_ptr->out1 = e;
                 
                 int64:idx = (frag_stack_size => int64) * 16i64;
                 drop npk_mem_write_int64(frag_stack, idx, s);
                 drop npk_mem_write_int64(frag_stack, idx + 8i64, e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_CONCAT) {
-                if (frag_stack_size < 2i32) { pass 0i64; }
+                if (frag_stack_size < 2i32) { fail ERR_REGEX_PARSE; }
                 int64:idx2 = ((frag_stack_size - 1i32) => int64) * 16i64;
                 int64:f2_s = npk_mem_read_int64(frag_stack, idx2);
                 int64:f2_e = npk_mem_read_int64(frag_stack, idx2 + 8i64);
@@ -139,41 +144,41 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 
                 // Patch f1_e to JMP to f2_s
                 wild NfaState->:f1_e_ptr = @cast_unchecked<NfaState->>(@cast_unchecked<NfaState->>(f1_e));
-                f1_e_ptr.opcode = OP_JMP;
-                f1_e_ptr.out1 = f2_s;
+                f1_e_ptr->opcode = OP_JMP;
+                f1_e_ptr->out1 = f2_s;
                 
                 int64:idx_n = (frag_stack_size => int64) * 16i64;
                 drop npk_mem_write_int64(frag_stack, idx_n, f1_s);
                 drop npk_mem_write_int64(frag_stack, idx_n + 8i64, f2_e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_STAR) {
-                if (frag_stack_size < 1i32) { pass 0i64; }
+                if (frag_stack_size < 1i32) { fail ERR_REGEX_PARSE; }
                 int64:idx1 = ((frag_stack_size - 1i32) => int64) * 16i64;
                 int64:f1_s = npk_mem_read_int64(frag_stack, idx1);
                 int64:f1_e = npk_mem_read_int64(frag_stack, idx1 + 8i64);
                 frag_stack_size = frag_stack_size - 1i32;
                 
                 int64:s = raw regex_arena_alloc(arena_ptr, OP_SPLIT, 0i32);
-                if (s == 0i64) { pass 0i64; }
+                if (s == 0i64) { fail ERR_REGEX_PARSE; }
                 int64:e = raw regex_arena_alloc(arena_ptr, OP_MATCH, 0i32);
-                if (e == 0i64) { pass 0i64; }
+                if (e == 0i64) { fail ERR_REGEX_PARSE; }
                 
                 // Split goes to f1_s or e
                 wild NfaState->:s_ptr = @cast_unchecked<NfaState->>(@cast_unchecked<NfaState->>(s));
-                s_ptr.out1 = f1_s;
-                s_ptr.out2 = e;
+                s_ptr->out1 = f1_s;
+                s_ptr->out2 = e;
                 
                 // f1_e goes to s (loop)
                 wild NfaState->:f1_e_ptr = @cast_unchecked<NfaState->>(@cast_unchecked<NfaState->>(f1_e));
-                f1_e_ptr.opcode = OP_JMP;
-                f1_e_ptr.out1 = s;
+                f1_e_ptr->opcode = OP_JMP;
+                f1_e_ptr->out1 = s;
                 
                 int64:idx_n = (frag_stack_size => int64) * 16i64;
                 drop npk_mem_write_int64(frag_stack, idx_n, s);
                 drop npk_mem_write_int64(frag_stack, idx_n + 8i64, e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_ALT) {
-                if (frag_stack_size < 2i32) { pass 0i64; }
+                if (frag_stack_size < 2i32) { fail ERR_REGEX_PARSE; }
                 int64:idx2 = ((frag_stack_size - 1i32) => int64) * 16i64;
                 int64:f2_s = npk_mem_read_int64(frag_stack, idx2);
                 int64:f2_e = npk_mem_read_int64(frag_stack, idx2 + 8i64);
@@ -183,74 +188,74 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 frag_stack_size = frag_stack_size - 2i32;
 
                 int64:s = raw regex_arena_alloc(arena_ptr, OP_SPLIT, 0i32);
-                if (s == 0i64) { pass 0i64; }
+                if (s == 0i64) { fail ERR_REGEX_PARSE; }
                 int64:e = raw regex_arena_alloc(arena_ptr, OP_MATCH, 0i32);
-                if (e == 0i64) { pass 0i64; }
+                if (e == 0i64) { fail ERR_REGEX_PARSE; }
 
                 wild NfaState->:s_ptr = @cast_unchecked<NfaState->>(@cast_unchecked<NfaState->>(s));
-                s_ptr.out1 = f1_s;
-                s_ptr.out2 = f2_s;
+                s_ptr->out1 = f1_s;
+                s_ptr->out2 = f2_s;
 
                 wild NfaState->:f1_e_ptr = @cast_unchecked<NfaState->>(@cast_unchecked<NfaState->>(f1_e));
-                f1_e_ptr.opcode = OP_JMP;
-                f1_e_ptr.out1 = e;
+                f1_e_ptr->opcode = OP_JMP;
+                f1_e_ptr->out1 = e;
 
                 wild NfaState->:f2_e_ptr = @cast_unchecked<NfaState->>(@cast_unchecked<NfaState->>(f2_e));
-                f2_e_ptr.opcode = OP_JMP;
-                f2_e_ptr.out1 = e;
+                f2_e_ptr->opcode = OP_JMP;
+                f2_e_ptr->out1 = e;
 
                 int64:idx_n = (frag_stack_size => int64) * 16i64;
                 drop npk_mem_write_int64(frag_stack, idx_n, s);
                 drop npk_mem_write_int64(frag_stack, idx_n + 8i64, e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_PLUS) {
-                if (frag_stack_size < 1i32) { pass 0i64; }
+                if (frag_stack_size < 1i32) { fail ERR_REGEX_PARSE; }
                 int64:idx1 = ((frag_stack_size - 1i32) => int64) * 16i64;
                 int64:f1_s = npk_mem_read_int64(frag_stack, idx1);
                 int64:f1_e = npk_mem_read_int64(frag_stack, idx1 + 8i64);
                 frag_stack_size = frag_stack_size - 1i32;
 
                 int64:s = raw regex_arena_alloc(arena_ptr, OP_SPLIT, 0i32);
-                if (s == 0i64) { pass 0i64; }
+                if (s == 0i64) { fail ERR_REGEX_PARSE; }
                 int64:e = raw regex_arena_alloc(arena_ptr, OP_MATCH, 0i32);
-                if (e == 0i64) { pass 0i64; }
+                if (e == 0i64) { fail ERR_REGEX_PARSE; }
 
                 // f1_e goes to split: back to f1_s OR to e
                 wild NfaState->:f1_e_ptr = @cast_unchecked<NfaState->>(@cast_unchecked<NfaState->>(f1_e));
-                f1_e_ptr.opcode = OP_SPLIT;
-                f1_e_ptr.out1 = f1_s;
-                f1_e_ptr.out2 = e;
+                f1_e_ptr->opcode = OP_SPLIT;
+                f1_e_ptr->out1 = f1_s;
+                f1_e_ptr->out2 = e;
 
                 // s is just a JMP to f1_s (could just use f1_s as start, but keeping single entry/exit)
                 wild NfaState->:s_ptr = @cast_unchecked<NfaState->>(@cast_unchecked<NfaState->>(s));
-                s_ptr.opcode = OP_JMP;
-                s_ptr.out1 = f1_s;
+                s_ptr->opcode = OP_JMP;
+                s_ptr->out1 = f1_s;
 
                 int64:idx_n = (frag_stack_size => int64) * 16i64;
                 drop npk_mem_write_int64(frag_stack, idx_n, s);
                 drop npk_mem_write_int64(frag_stack, idx_n + 8i64, e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_QMARK) {
-                if (frag_stack_size < 1i32) { pass 0i64; }
+                if (frag_stack_size < 1i32) { fail ERR_REGEX_PARSE; }
                 int64:idx1 = ((frag_stack_size - 1i32) => int64) * 16i64;
                 int64:f1_s = npk_mem_read_int64(frag_stack, idx1);
                 int64:f1_e = npk_mem_read_int64(frag_stack, idx1 + 8i64);
                 frag_stack_size = frag_stack_size - 1i32;
 
                 int64:s = raw regex_arena_alloc(arena_ptr, OP_SPLIT, 0i32);
-                if (s == 0i64) { pass 0i64; }
+                if (s == 0i64) { fail ERR_REGEX_PARSE; }
                 int64:e = raw regex_arena_alloc(arena_ptr, OP_MATCH, 0i32);
-                if (e == 0i64) { pass 0i64; }
+                if (e == 0i64) { fail ERR_REGEX_PARSE; }
 
                 // split goes to f1_s OR to e
                 wild NfaState->:s_ptr = @cast_unchecked<NfaState->>(@cast_unchecked<NfaState->>(s));
-                s_ptr.out1 = f1_s;
-                s_ptr.out2 = e;
+                s_ptr->out1 = f1_s;
+                s_ptr->out2 = e;
 
                 // f1_e goes to e
                 wild NfaState->:f1_e_ptr = @cast_unchecked<NfaState->>(@cast_unchecked<NfaState->>(f1_e));
-                f1_e_ptr.opcode = OP_JMP;
-                f1_e_ptr.out1 = e;
+                f1_e_ptr->opcode = OP_JMP;
+                f1_e_ptr->out1 = e;
 
                 int64:idx_n = (frag_stack_size => int64) * 16i64;
                 drop npk_mem_write_int64(frag_stack, idx_n, s);
@@ -261,7 +266,7 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
     }
     
     if (frag_stack_size != 1i32) {
-        pass 0i64;
+        fail ERR_REGEX_PARSE;
     }
     
     int64:idx_final = 0i64;

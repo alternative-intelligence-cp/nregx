@@ -4,9 +4,7 @@ use "ast_types.npk".*;
 use "util/str_view.npk".*;
 use "util/mem_primitives.npk".*;
 
-extern "nitpick_libc_sys" {
-    func:npk_tlc_batch_alloc = int64(int64:size);
-}
+
 
 pub func:extract_literal_prefix = int64(int64:ast_root, int64:pattern) {
     int64:ext = npk_core_alloc(24i64);
@@ -18,7 +16,8 @@ pub func:extract_literal_prefix = int64(int64:ast_root, int64:pattern) {
         pass ext;
     }
     
-    int64:trav_stack = npk_tlc_batch_alloc(8192i64);
+    int64:trav_stack = npk_core_alloc(8192i64);
+    defer { drop npk_core_dalloc(trav_stack); }
     int32:stack_size = 0i32;
     
     int64:curr = ast_root;

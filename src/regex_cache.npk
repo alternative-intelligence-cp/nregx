@@ -12,8 +12,6 @@ extern "nitpick_libc_sys" {
     func:npk_shim_rwlock_rdlock = int32(int64:handle);
     func:npk_shim_rwlock_wrlock = int32(int64:handle);
     func:npk_shim_rwlock_unlock = int32(int64:handle);
-    func:npk_shim_atomic_int32_fetch_add = int32(int64:ptr, int32:val, int32:memorder);
-    func:npk_shim_atomic_int32_fetch_sub = int32(int64:ptr, int32:val, int32:memorder);
 }
 
 // Global rwlock, list head, and size bounds
@@ -60,26 +58,27 @@ pub func:regex_cache_get = int64(int64:pattern, int64:pattern_len) {
             running = 0i32;
         } else {
             wild CacheEntry->:curr_ptr = @cast_unchecked<CacheEntry->>(@cast_unchecked<CacheEntry->>(curr));
-            int64:p_str = curr_ptr.p_str;
-            int64:p_len = curr_ptr.p_len;
+            int64:p_str = curr_ptr->p_str;
+            int64:p_len = curr_ptr->p_len;
             
             int32:eq = raw strings_equal(pattern, pattern_len, p_str, p_len);
             if (eq == 1i32) {
                 found = curr;
-                atomic<int32>->:ref_count_ptr = curr_ptr.ref_count;
-                drop npk_shim_atomic_int32_fetch_add(@cast_unchecked<int64>(ref_count_ptr), 1i32, 0i32);
+                atomic<int32>:_rc = curr_ptr->ref_count;
+                drop _rc.fetch_add(1i32);
+                curr_ptr->ref_count = _rc;
                 
                 if (prev != 0i64) {
                     wild CacheEntry->:prev_ptr = @cast_unchecked<CacheEntry->>(@cast_unchecked<CacheEntry->>(prev));
-                    Handle<CacheEntry>:next = curr_ptr.next;
-                    prev_ptr.next = next;
-                    curr_ptr.next = g_regex_cache_head => Handle<CacheEntry>;
+                    CacheEntry->:next = curr_ptr->next;
+                    prev_ptr->next = next;
+                    curr_ptr->next = @cast_unchecked<CacheEntry->>(g_regex_cache_head);
                     g_regex_cache_head = curr;
                 }
                 running = 0i32;
             } else {
                 prev = curr;
-                curr = curr_ptr.next => int64;
+                curr = @cast_unchecked<int64>(curr_ptr->next);
             }
         }
     }
@@ -99,7 +98,7 @@ pub func:regex_cache_insert = int64(int64:pattern, int64:pattern_len, int64:aren
             int32:running = 1i32;
             when (running == 1i32) {
                 wild CacheEntry->:curr_ptr = @cast_unchecked<CacheEntry->>(@cast_unchecked<CacheEntry->>(curr));
-                int64:next = curr_ptr.next => int64;
+                int64:next = @cast_unchecked<int64>(curr_ptr->next);
                 if (next == 0i64) {
                     running = 0i32;
                 } else {
@@ -111,23 +110,21 @@ pub func:regex_cache_insert = int64(int64:pattern, int64:pattern_len, int64:aren
             wild CacheEntry->:curr_ptr = @cast_unchecked<CacheEntry->>(@cast_unchecked<CacheEntry->>(curr));
             if (prev != 0i64) {
                 wild CacheEntry->:prev_ptr = @cast_unchecked<CacheEntry->>(@cast_unchecked<CacheEntry->>(prev));
-                prev_ptr.next = 0i64 => Handle<CacheEntry>;
+                prev_ptr->next = @cast_unchecked<CacheEntry->>(0i64);
             } else {
                 g_regex_cache_head = 0i64;
             }
             
-            int64:p_str = curr_ptr.p_str;
-            int64:c_arena = curr_ptr.arena_ptr;
+            int64:p_str = curr_ptr->p_str;
+            int64:c_arena = curr_ptr->arena_ptr;
             
-            atomic<int32>->:ref_count_ptr = curr_ptr.ref_count;
-            int32:refs = npk_shim_atomic_int32_fetch_sub(@cast_unchecked<int64>(ref_count_ptr), 1i32, 0i32);
+            atomic<int32>:_rc = curr_ptr->ref_count;
+            int32:refs = _rc.fetch_sub(1i32);
+            curr_ptr->ref_count = _rc;
             
             if (refs == 1i32) {
                 drop npk_core_dalloc(p_str);
                 drop regex_arena_destroy(c_arena);
-                atomic<int32>->:hit_ptr = curr_ptr.hit_counter;
-                drop npk_core_dalloc(@cast_unchecked<int64>(hit_ptr));
-                drop npk_core_dalloc(@cast_unchecked<int64>(ref_count_ptr));
                 drop npk_core_dalloc(curr);
             }
             
@@ -153,23 +150,19 @@ pub func:regex_cache_insert = int64(int64:pattern, int64:pattern_len, int64:aren
     }
     
     wild CacheEntry->:entry_ptr = @cast_unchecked<CacheEntry->>(@cast_unchecked<CacheEntry->>(entry));
-    entry_ptr.p_str = p_copy;
-    entry_ptr.p_len = pattern_len;
-    entry_ptr.arena_ptr = arena_ptr;
-    entry_ptr.start_state = start_state;
+    entry_ptr->p_str = p_copy;
+    entry_ptr->p_len = pattern_len;
+    entry_ptr->arena_ptr = arena_ptr;
+    entry_ptr->start_state = start_state;
     
     // hit_counter
-    int64:hit_ptr = npk_core_alloc(8i64);
-    drop npk_mem_write_int32(hit_ptr, 0i64, 0i32);
-    entry_ptr.hit_counter = @cast_unchecked<atomic<int32>->>(hit_ptr);
+    entry_ptr->hit_counter = atomic_new(0i32);
     
     // ref_count
-    int64:ref_ptr = npk_core_alloc(8i64);
-    drop npk_mem_write_int32(ref_ptr, 0i64, 2i32); // 1 for cache, 1 for caller
-    entry_ptr.ref_count = @cast_unchecked<atomic<int32>->>(ref_ptr);
+    entry_ptr->ref_count = atomic_new(2i32); // 1 for cache, 1 for caller
     
     // insert at head
-    entry_ptr.next = g_regex_cache_head => Handle<CacheEntry>;
+    entry_ptr->next = @cast_unchecked<CacheEntry->>(g_regex_cache_head);
     g_regex_cache_head = entry;
     g_regex_cache_size = g_regex_cache_size + 1i64;
     
@@ -179,8 +172,9 @@ pub func:regex_cache_insert = int64(int64:pattern, int64:pattern_len, int64:aren
 pub func:regex_cache_increment_hit = int32(int64:entry) {
     if (entry == 0i64) { pass 0i32; }
     wild CacheEntry->:entry_ptr = @cast_unchecked<CacheEntry->>(@cast_unchecked<CacheEntry->>(entry));
-    atomic<int32>->:hit_ptr = entry_ptr.hit_counter;
-    drop npk_shim_atomic_int32_fetch_add(@cast_unchecked<int64>(hit_ptr), 1i32, 0i32);
+    atomic<int32>:_hc = entry_ptr->hit_counter;
+    drop _hc.fetch_add(1i32);
+    entry_ptr->hit_counter = _hc;
     pass 1i32;
 };
 
@@ -189,23 +183,21 @@ pub func:regex_execute = MatchResult(int64:entry, int64:text, int64:text_len) {
     drop regex_cache_increment_hit(entry);
     
     wild CacheEntry->:entry_ptr = @cast_unchecked<CacheEntry->>(@cast_unchecked<CacheEntry->>(entry));
-    int64:arena_ptr = entry_ptr.arena_ptr;
-    int64:start_state = entry_ptr.start_state;
+    int64:arena_ptr = entry_ptr->arena_ptr;
+    int64:start_state = entry_ptr->start_state;
     
     // Call the VM
     MatchResult:match_res = raw regex_vm_match(arena_ptr, start_state, text, text_len);
     
     // Decrement ref count
-    atomic<int32>->:ref_count_ptr = entry_ptr.ref_count;
-    int32:old_ref = npk_shim_atomic_int32_fetch_sub(@cast_unchecked<int64>(ref_count_ptr), 1i32, 0i32);
+    atomic<int32>:_rc = entry_ptr->ref_count;
+    int32:old_ref = _rc.fetch_sub(1i32);
+    entry_ptr->ref_count = _rc;
     
     if (old_ref == 1i32) {
-        int64:p_str = entry_ptr.p_str;
+        int64:p_str = entry_ptr->p_str;
         drop npk_core_dalloc(p_str);
         drop regex_arena_destroy(arena_ptr);
-        atomic<int32>->:hit_ptr = entry_ptr.hit_counter;
-        drop npk_core_dalloc(@cast_unchecked<int64>(hit_ptr));
-        drop npk_core_dalloc(@cast_unchecked<int64>(ref_count_ptr));
         drop npk_core_dalloc(entry);
     }
     

@@ -47,7 +47,7 @@ pub struct:CacheEntry = {
     int64:p_len;
     int64:arena_ptr;
     int64:start_state;
-    Handle<CacheEntry>: next;
-    atomic<int32>->: hit_counter;
-    atomic<int32>->: ref_count;
+    CacheEntry->: next;
+    atomic<int32>: hit_counter;
+    atomic<int32>: ref_count;
 };
