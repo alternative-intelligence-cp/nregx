@@ -66,7 +66,7 @@ func:add_state = int64(int64:start_state, int64:list_ah, int64:visit_gen, int64:
         drop npk_mem_copy(temp_caps_scratch, state_captures_raw, 80i64);
         int64:state_captures = temp_caps_scratch;
         
-        wild NfaState->:s_ptr = @cast_unchecked<NfaState->>(state);
+        wild NfaState->:s_ptr = cast_unchecked<NfaState->>(state);
         int32:opcode = s_ptr->opcode;
         int64:out1 = s_ptr->out1;
         int64:out2 = s_ptr->out2;
@@ -216,7 +216,7 @@ pub func:regex_vm_match = MatchResult(int64:arena_ptr, int64:start_state, int64:
                 int64:state_start_idx = npk_mem_read_int64(clist_ah, 8i64 + ti * 96i64 + 8i64);
                 int64:state_captures = clist_ah + 8i64 + ti * 96i64 + 16i64;
                 
-                wild NfaState->:s_ptr = @cast_unchecked<NfaState->>(state);
+                wild NfaState->:s_ptr = cast_unchecked<NfaState->>(state);
                 int32:opcode = s_ptr->opcode;
                 
                 if (opcode == OP_MATCH) {
@@ -275,8 +275,8 @@ pub func:regex_vm_match = MatchResult(int64:arena_ptr, int64:start_state, int64:
     MatchResult:mr;
     if (matched == 1i32) {
         mr.matched = 1i32;
-        mr.start_idx = @cast_unchecked<int32>(final_start_idx);
-        mr.end_idx = @cast_unchecked<int32>(final_end_idx);
+        mr.start_idx = cast_unchecked<int32>(final_start_idx);
+        mr.end_idx = cast_unchecked<int32>(final_end_idx);
         int64:ci = 0i64;
         when (ci < 20i64) {
             mr.captures[ci] = npk_mem_read_int32(final_caps_buf, ci * 4i64);

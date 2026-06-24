@@ -24,7 +24,7 @@ pub func:main = int32() {
     int64:entry = compile_and_cache(pat1, 3i64);
     if (entry == 0i64) { exit 99i32; }
 
-    wild CacheEntry->:entry_ptr = @cast_unchecked<CacheEntry->>(@cast_unchecked<CacheEntry->>(entry));
+    wild CacheEntry->:entry_ptr = cast_unchecked<CacheEntry->>(cast_unchecked<CacheEntry->>(entry));
     int64:arena_ptr = entry_ptr->arena_ptr;
     int64:start_state = entry_ptr->start_state;
     

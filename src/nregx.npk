@@ -84,7 +84,7 @@ pub func:nregx_match = MatchResult(int64:pattern, int64:pattern_len, int64:text,
     int64:entry = compile_and_cache(pattern, pattern_len) ? 0i64;
     if (entry == 0i64) { pass def_match; } // compilation failed
     
-    wild CacheEntry->:entry_ptr = @cast_unchecked<CacheEntry->>(entry);
+    wild CacheEntry->:entry_ptr = cast_unchecked<CacheEntry->>(entry);
     
     MatchResult:match_res = raw regex_execute(entry, text, text_len);
     pass match_res;

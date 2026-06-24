@@ -44,8 +44,8 @@ pub func:lex_pattern = int32(int64:pattern, limit<r_valid_regex_len> int64:len, 
         }
         c = codepoint;
 
-        wild Token->:tok_ptr = @cast_unchecked<Token->>(tokens + ((token_count => int64) * 8i64));
-        tok_ptr->val = @cast_unchecked<int32>(c);
+        wild Token->:tok_ptr = cast_unchecked<Token->>(tokens + ((token_count => int64) * 8i64));
+        tok_ptr->val = cast_unchecked<int32>(c);
         
         if (c == 42i64) { 
             tok_ptr->type = TOKEN_STAR;
@@ -92,10 +92,10 @@ pub func:lex_pattern = int32(int64:pattern, limit<r_valid_regex_len> int64:len, 
 
 func:ast_clone = int64(int64:node_ptr, int64:arena_ptr) {
     if (node_ptr == 0i64) { pass 0i64; }
-    wild AstNode->:old_ptr = @cast_unchecked<AstNode->>(node_ptr);
+    wild AstNode->:old_ptr = cast_unchecked<AstNode->>(node_ptr);
     int64:new_node = raw ast_arena_alloc_node(arena_ptr, old_ptr->type, old_ptr->val);
     if (new_node == 0i64) { pass 0i64; }
-    wild AstNode->:new_ptr = @cast_unchecked<AstNode->>(new_node);
+    wild AstNode->:new_ptr = cast_unchecked<AstNode->>(new_node);
     
     // Copy the bitmasks for AST_CLASS
     if (old_ptr->type == AST_CLASS) {
@@ -134,7 +134,7 @@ func:parse_alt = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, in
         if (idx >= count) {
             running = 0i32;
         } else {
-            wild Token->:tok_ptr = @cast_unchecked<Token->>(tokens + ((idx => int64) * 8i64));
+            wild Token->:tok_ptr = cast_unchecked<Token->>(tokens + ((idx => int64) * 8i64));
             int32:tok_type = tok_ptr->type;
             if (tok_type == TOKEN_PIPE) {
                 drop npk_mem_write_int32(idx_ptr, 0i64, idx + 1i32);
@@ -142,7 +142,7 @@ func:parse_alt = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, in
                 if (right == 0i64) { fail ERR_REGEX_PARSE; }
                 int64:alt_node = raw ast_arena_alloc_node(arena_ptr,AST_ALT, 0i32);
                 if (alt_node == 0i64) { fail ERR_REGEX_PARSE; }
-                wild AstNode->:alt_ptr = @cast_unchecked<AstNode->>(alt_node);
+                wild AstNode->:alt_ptr = cast_unchecked<AstNode->>(alt_node);
                 alt_ptr->left = left;
                 alt_ptr->right = right;
                 left = alt_node;
@@ -165,7 +165,7 @@ func:parse_concat = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth,
         if (idx >= count) {
             running = 0i32;
         } else {
-            wild Token->:tok_ptr = @cast_unchecked<Token->>(tokens + ((idx => int64) * 8i64));
+            wild Token->:tok_ptr = cast_unchecked<Token->>(tokens + ((idx => int64) * 8i64));
             int32:tok_type = tok_ptr->type;
             // concat if token is LITERAL, DOT, LPAREN, LBRACKET, CARET, DOLLAR, ESCAPE, LBRACE, RBRACE, COMMA
             if ((tok_type == TOKEN_LITERAL) || (tok_type == TOKEN_DOT) || (tok_type == TOKEN_LPAREN) || 
@@ -174,7 +174,7 @@ func:parse_concat = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth,
                 if (right == 0i64) { fail ERR_REGEX_PARSE; }
                 int64:concat_node = raw ast_arena_alloc_node(arena_ptr,AST_CONCAT, 0i32);
                 if (concat_node == 0i64) { fail ERR_REGEX_PARSE; }
-                wild AstNode->:concat_ptr = @cast_unchecked<AstNode->>(concat_node);
+                wild AstNode->:concat_ptr = cast_unchecked<AstNode->>(concat_node);
                 concat_ptr->left = left;
                 concat_ptr->right = right;
                 left = concat_node;
@@ -193,7 +193,7 @@ func:parse_rep = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, in
     
     int32:idx = npk_mem_read_int32(idx_ptr, 0i64);
     if (idx < count) {
-        wild Token->:tok_ptr = @cast_unchecked<Token->>(tokens + ((idx => int64) * 8i64));
+        wild Token->:tok_ptr = cast_unchecked<Token->>(tokens + ((idx => int64) * 8i64));
         int32:tok_type = tok_ptr->type;
         
         if (tok_type == TOKEN_STAR || tok_type == TOKEN_PLUS || tok_type == TOKEN_QMARK) {
@@ -201,7 +201,7 @@ func:parse_rep = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, in
             int32:lazy = 0i32;
             int32:idx_next = npk_mem_read_int32(idx_ptr, 0i64);
             if (idx_next < count) {
-                wild Token->:tok_ptr_next = @cast_unchecked<Token->>(tokens + ((idx_next => int64) * 8i64));
+                wild Token->:tok_ptr_next = cast_unchecked<Token->>(tokens + ((idx_next => int64) * 8i64));
                 if (tok_ptr_next->type == TOKEN_QMARK) {
                     lazy = 1i32;
                     drop npk_mem_write_int32(idx_ptr, 0i64, idx_next + 1i32);
@@ -211,19 +211,19 @@ func:parse_rep = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, in
             if (tok_type == TOKEN_STAR) {
                 int64:star_node = raw ast_arena_alloc_node(arena_ptr,AST_STAR, lazy);
                 if (star_node == 0i64) { fail ERR_REGEX_PARSE; }
-                wild AstNode->:star_ptr = @cast_unchecked<AstNode->>(star_node);
+                wild AstNode->:star_ptr = cast_unchecked<AstNode->>(star_node);
                 star_ptr->left = node;
                 node = star_node;
             } else if (tok_type == TOKEN_PLUS) {
                 int64:plus_node = raw ast_arena_alloc_node(arena_ptr,AST_PLUS, lazy);
                 if (plus_node == 0i64) { fail ERR_REGEX_PARSE; }
-                wild AstNode->:plus_ptr = @cast_unchecked<AstNode->>(plus_node);
+                wild AstNode->:plus_ptr = cast_unchecked<AstNode->>(plus_node);
                 plus_ptr->left = node;
                 node = plus_node;
             } else if (tok_type == TOKEN_QMARK) {
                 int64:qmark_node = raw ast_arena_alloc_node(arena_ptr,AST_QMARK, lazy);
                 if (qmark_node == 0i64) { fail ERR_REGEX_PARSE; }
-                wild AstNode->:qmark_ptr = @cast_unchecked<AstNode->>(qmark_node);
+                wild AstNode->:qmark_ptr = cast_unchecked<AstNode->>(qmark_node);
                 qmark_ptr->left = node;
                 node = qmark_node;
             }
@@ -236,7 +236,7 @@ func:parse_rep = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, in
             int32:i = idx + 1i32;
             
             when (i < count && valid == 0i32) {
-                wild Token->:t = @cast_unchecked<Token->>(tokens + ((i => int64) * 8i64));
+                wild Token->:t = cast_unchecked<Token->>(tokens + ((i => int64) * 8i64));
                 if (t->type == TOKEN_LITERAL && t->val >= 48i32 && t->val <= 57i32) {
                     if (state == 0i32) {
                         m = (m * 10i32) + (t->val - 48i32);
@@ -265,7 +265,7 @@ func:parse_rep = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, in
                 
                 int32:lazy = 0i32;
                 if (i < count) {
-                    wild Token->:t_next = @cast_unchecked<Token->>(tokens + ((i => int64) * 8i64));
+                    wild Token->:t_next = cast_unchecked<Token->>(tokens + ((i => int64) * 8i64));
                     if (t_next->type == TOKEN_QMARK) {
                         lazy = 1i32;
                         drop npk_mem_write_int32(idx_ptr, 0i64, i + 1i32);
@@ -294,7 +294,7 @@ func:parse_rep = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, in
                         } else {
                             int64:concat = raw ast_arena_alloc_node(arena_ptr,AST_CONCAT, 0i32);
                             if (concat == 0i64) { fail ERR_REGEX_PARSE; }
-                            wild AstNode->:c_ptr = @cast_unchecked<AstNode->>(concat);
+                            wild AstNode->:c_ptr = cast_unchecked<AstNode->>(concat);
                             c_ptr->left = node;
                             c_ptr->right = clone;
                             node = concat;
@@ -311,7 +311,7 @@ func:parse_rep = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, in
                         }
                         int64:star = raw ast_arena_alloc_node(arena_ptr,AST_STAR, lazy);
                         if (star == 0i64) { fail ERR_REGEX_PARSE; }
-                        wild AstNode->:s_ptr = @cast_unchecked<AstNode->>(star);
+                        wild AstNode->:s_ptr = cast_unchecked<AstNode->>(star);
                         s_ptr->left = clone;
                         
                         if (node == 0i64) {
@@ -319,7 +319,7 @@ func:parse_rep = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, in
                         } else {
                             int64:concat = raw ast_arena_alloc_node(arena_ptr,AST_CONCAT, 0i32);
                             if (concat == 0i64) { fail ERR_REGEX_PARSE; }
-                            wild AstNode->:c_ptr = @cast_unchecked<AstNode->>(concat);
+                            wild AstNode->:c_ptr = cast_unchecked<AstNode->>(concat);
                             c_ptr->left = node;
                             c_ptr->right = star;
                             node = concat;
@@ -337,7 +337,7 @@ func:parse_rep = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, in
                             
                             int64:qmark = raw ast_arena_alloc_node(arena_ptr,AST_QMARK, lazy);
                             if (qmark == 0i64) { fail ERR_REGEX_PARSE; }
-                            wild AstNode->:q_ptr = @cast_unchecked<AstNode->>(qmark);
+                            wild AstNode->:q_ptr = cast_unchecked<AstNode->>(qmark);
                             q_ptr->left = clone;
                             
                             if (node == 0i64) {
@@ -345,7 +345,7 @@ func:parse_rep = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, in
                             } else {
                                 int64:concat = raw ast_arena_alloc_node(arena_ptr,AST_CONCAT, 0i32);
                                 if (concat == 0i64) { fail ERR_REGEX_PARSE; }
-                                wild AstNode->:c_ptr = @cast_unchecked<AstNode->>(concat);
+                                wild AstNode->:c_ptr = cast_unchecked<AstNode->>(concat);
                                 c_ptr->left = node;
                                 c_ptr->right = qmark;
                                 node = concat;
@@ -366,7 +366,7 @@ func:parse_atom = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, i
     int32:idx = npk_mem_read_int32(idx_ptr, 0i64);
     if (idx >= count) { fail ERR_REGEX_PARSE; }
     
-    wild Token->:tok_ptr = @cast_unchecked<Token->>(tokens + ((idx => int64) * 8i64));
+    wild Token->:tok_ptr = cast_unchecked<Token->>(tokens + ((idx => int64) * 8i64));
     int32:tok_type = tok_ptr->type;
     int32:tok_val = tok_ptr->val;
     
@@ -396,7 +396,7 @@ func:parse_atom = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, i
         // Lookahead 1
         int32:idx_next = npk_mem_read_int32(idx_ptr, 0i64);
         if (idx_next >= count) { fail ERR_REGEX_PARSE; } // Invalid escape at end of pattern
-        wild Token->:tok_ptr_next = @cast_unchecked<Token->>(tokens + ((idx_next => int64) * 8i64));
+        wild Token->:tok_ptr_next = cast_unchecked<Token->>(tokens + ((idx_next => int64) * 8i64));
         int32:esc_val = tok_ptr_next->val;
         drop npk_mem_write_int32(idx_ptr, 0i64, idx_next + 1i32);
         
@@ -476,7 +476,7 @@ func:parse_atom = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, i
         int32:inverted = 0i32;
         int32:idx_curr_init = npk_mem_read_int32(idx_ptr, 0i64);
         if (idx_curr_init < count) {
-            wild Token->:tok_ptr_init = @cast_unchecked<Token->>(tokens + ((idx_curr_init => int64) * 8i64));
+            wild Token->:tok_ptr_init = cast_unchecked<Token->>(tokens + ((idx_curr_init => int64) * 8i64));
             if (tok_ptr_init->type == TOKEN_CARET) {
                 inverted = 1i32;
                 drop npk_mem_write_int32(idx_ptr, 0i64, idx_curr_init + 1i32);
@@ -487,7 +487,7 @@ func:parse_atom = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, i
         when (running == 1i32) {
             int32:idx_curr = npk_mem_read_int32(idx_ptr, 0i64);
             if (idx_curr >= count) { fail ERR_REGEX_PARSE; }
-            wild Token->:tok_ptr_curr = @cast_unchecked<Token->>(tokens + ((idx_curr => int64) * 8i64));
+            wild Token->:tok_ptr_curr = cast_unchecked<Token->>(tokens + ((idx_curr => int64) * 8i64));
             
             if (tok_ptr_curr->type == TOKEN_RBRACKET) {
                 drop npk_mem_write_int32(idx_ptr, 0i64, idx_curr + 1i32);
@@ -495,7 +495,7 @@ func:parse_atom = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, i
             } else if (tok_ptr_curr->type == TOKEN_ESCAPE) {
                 int32:idx_next = idx_curr + 1i32;
                 if (idx_next >= count) { fail ERR_REGEX_PARSE; }
-                wild Token->:tok_ptr_next = @cast_unchecked<Token->>(tokens + ((idx_next => int64) * 8i64));
+                wild Token->:tok_ptr_next = cast_unchecked<Token->>(tokens + ((idx_next => int64) * 8i64));
                 int32:esc_val = tok_ptr_next->val;
                 drop npk_mem_write_int32(idx_ptr, 0i64, idx_next + 1i32);
                 
@@ -511,7 +511,7 @@ func:parse_atom = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, i
                     drop npk_mem_write_int64(c_node, 32i64, b1 | -1i64);
                     drop npk_mem_write_int64(c_node, 40i64, b2 | -1i64);
                     drop npk_mem_write_int64(c_node, 48i64, b3 | -1i64);
-                    wild AstNode->:c_ptr = @cast_unchecked<AstNode->>(c_node);
+                    wild AstNode->:c_ptr = cast_unchecked<AstNode->>(c_node);
                     c_ptr->val = c_ptr->val | 1i32;
                 } else if (esc_val == 119i32) { // 'w'
                     int64:b0 = npk_mem_read_int64(c_node, 24i64);
@@ -527,7 +527,7 @@ func:parse_atom = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, i
                     drop npk_mem_write_int64(c_node, 32i64, b1 | -576460745995190271i64);
                     drop npk_mem_write_int64(c_node, 40i64, b2 | -1i64);
                     drop npk_mem_write_int64(c_node, 48i64, b3 | -1i64);
-                    wild AstNode->:c_ptr = @cast_unchecked<AstNode->>(c_node);
+                    wild AstNode->:c_ptr = cast_unchecked<AstNode->>(c_node);
                     c_ptr->val = c_ptr->val | 1i32;
                 } else if (esc_val == 115i32) { // 's'
                     int64:b0 = npk_mem_read_int64(c_node, 24i64);
@@ -541,7 +541,7 @@ func:parse_atom = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, i
                     drop npk_mem_write_int64(c_node, 32i64, b1 | -1i64);
                     drop npk_mem_write_int64(c_node, 40i64, b2 | -1i64);
                     drop npk_mem_write_int64(c_node, 48i64, b3 | -1i64);
-                    wild AstNode->:c_ptr = @cast_unchecked<AstNode->>(c_node);
+                    wild AstNode->:c_ptr = cast_unchecked<AstNode->>(c_node);
                     c_ptr->val = c_ptr->val | 1i32;
                 } else {
                     int32:c1 = esc_val;
@@ -554,16 +554,16 @@ func:parse_atom = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, i
                     int32:c2 = c1;
                     
                     if (idx_next2 + 1i32 < count) {
-                        wild Token->:tok_ptr_dash = @cast_unchecked<Token->>(tokens + ((idx_next2 => int64) * 8i64));
+                        wild Token->:tok_ptr_dash = cast_unchecked<Token->>(tokens + ((idx_next2 => int64) * 8i64));
                         if ((tok_ptr_dash->type == TOKEN_LITERAL) && (tok_ptr_dash->val == 45i32)) {
-                            wild Token->:tok_ptr_end = @cast_unchecked<Token->>(tokens + (((idx_next2 + 1i32) => int64) * 8i64));
+                            wild Token->:tok_ptr_end = cast_unchecked<Token->>(tokens + (((idx_next2 + 1i32) => int64) * 8i64));
                             if (tok_ptr_end->type != TOKEN_RBRACKET) { 
                                 int32:adv = 2i32;
                                 c2 = tok_ptr_end->val;
                                 if (tok_ptr_end->type == TOKEN_ESCAPE) {
                                     int32:idx_escape_char = idx_next2 + 2i32;
                                     if (idx_escape_char < count) {
-                                        wild Token->:tok_ptr_escape_char = @cast_unchecked<Token->>(tokens + ((idx_escape_char => int64) * 8i64));
+                                        wild Token->:tok_ptr_escape_char = cast_unchecked<Token->>(tokens + ((idx_escape_char => int64) * 8i64));
                                         c2 = tok_ptr_escape_char->val;
                                         adv = 3i32;
                                     } else { fail ERR_REGEX_PARSE; }
@@ -598,16 +598,16 @@ func:parse_atom = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, i
                 int32:c2 = c1;
                 
                 if (idx_next + 1i32 < count) {
-                    wild Token->:tok_ptr_dash = @cast_unchecked<Token->>(tokens + ((idx_next => int64) * 8i64));
+                    wild Token->:tok_ptr_dash = cast_unchecked<Token->>(tokens + ((idx_next => int64) * 8i64));
                     if ((tok_ptr_dash->type == TOKEN_LITERAL) && (tok_ptr_dash->val == 45i32)) {
-                        wild Token->:tok_ptr_end = @cast_unchecked<Token->>(tokens + (((idx_next + 1i32) => int64) * 8i64));
+                        wild Token->:tok_ptr_end = cast_unchecked<Token->>(tokens + (((idx_next + 1i32) => int64) * 8i64));
                         if (tok_ptr_end->type != TOKEN_RBRACKET) { 
                             int32:adv = 2i32;
                             c2 = tok_ptr_end->val;
                             if (tok_ptr_end->type == TOKEN_ESCAPE) {
                                 int32:idx_escape_char = idx_next + 2i32;
                                 if (idx_escape_char < count) {
-                                    wild Token->:tok_ptr_escape_char = @cast_unchecked<Token->>(tokens + ((idx_escape_char => int64) * 8i64));
+                                    wild Token->:tok_ptr_escape_char = cast_unchecked<Token->>(tokens + ((idx_escape_char => int64) * 8i64));
                                     c2 = tok_ptr_escape_char->val;
                                     adv = 3i32;
                                 } else { fail ERR_REGEX_PARSE; }
@@ -636,7 +636,7 @@ func:parse_atom = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, i
         }
         
         if (inverted == 1i32) {
-            wild AstNode->:c_ptr = @cast_unchecked<AstNode->>(c_node);
+            wild AstNode->:c_ptr = cast_unchecked<AstNode->>(c_node);
             c_ptr->val = c_ptr->val ^ 1i32;
             int64:b0 = npk_mem_read_int64(c_node, 24i64);
             int64:b1 = npk_mem_read_int64(c_node, 32i64);
@@ -653,8 +653,8 @@ func:parse_atom = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, i
         int32:is_capture = 1i32;
         int32:idx_nc = npk_mem_read_int32(idx_ptr, 0i64);
         if (idx_nc + 1i32 < count) {
-            wild Token->:t1 = @cast_unchecked<Token->>(tokens + ((idx_nc => int64) * 8i64));
-            wild Token->:t2 = @cast_unchecked<Token->>(tokens + (((idx_nc + 1i32) => int64) * 8i64));
+            wild Token->:t1 = cast_unchecked<Token->>(tokens + ((idx_nc => int64) * 8i64));
+            wild Token->:t2 = cast_unchecked<Token->>(tokens + (((idx_nc + 1i32) => int64) * 8i64));
             if (t1->type == TOKEN_QMARK && t2->type == TOKEN_LITERAL && t2->val == 58i32) {
                 is_capture = 0i32;
                 drop npk_mem_write_int32(idx_ptr, 0i64, idx_nc + 2i32);
@@ -673,7 +673,7 @@ func:parse_atom = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, i
         
         int32:idx2 = npk_mem_read_int32(idx_ptr, 0i64);
         if (idx2 >= count) { fail ERR_REGEX_PARSE; }
-        wild Token->:tok_ptr2 = @cast_unchecked<Token->>(tokens + ((idx2 => int64) * 8i64));
+        wild Token->:tok_ptr2 = cast_unchecked<Token->>(tokens + ((idx2 => int64) * 8i64));
         int32:tok_type2 = tok_ptr2->type;
         
         if (tok_type2 != TOKEN_RPAREN) { fail ERR_REGEX_PARSE; }
@@ -682,7 +682,7 @@ func:parse_atom = int64(int64:tokens, int32:count, int64:idx_ptr, int32:depth, i
         if (is_capture == 1i32) {
             int64:save_node = raw ast_arena_alloc_node(arena_ptr,AST_SAVE, cap);
             if (save_node == 0i64) { fail ERR_REGEX_PARSE; }
-            wild AstNode->:save_ptr = @cast_unchecked<AstNode->>(save_node);
+            wild AstNode->:save_ptr = cast_unchecked<AstNode->>(save_node);
             save_ptr->left = inner;
             pass save_node;
         } else {
@@ -709,7 +709,7 @@ pub func:parse_regex_ast = int64(int64:tokens, int32:count, int64:arena_ptr) {
     
     int64:save_root = raw ast_arena_alloc_node(arena_ptr,AST_SAVE, 0i32);
     if (save_root == 0i64) { fail ERR_REGEX_PARSE; }
-    wild AstNode->:sr_ptr = @cast_unchecked<AstNode->>(save_root);
+    wild AstNode->:sr_ptr = cast_unchecked<AstNode->>(save_root);
     sr_ptr->left = root;
     
     int32:idx = npk_mem_read_int32(idx_ptr, 0i64);
