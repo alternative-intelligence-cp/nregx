@@ -10,25 +10,31 @@ extern "nitpick_libc_sys" {
 pub func:main = int32() {
     drop nregx_init();
 
-    int64:pat1 = npk_core_alloc(7i64);
+    // Pattern: 'a' '❤' 'b' (❤ is U+2764, encoded as E2 9D A4)
+    int64:pat1 = npk_core_alloc(5i64);
     drop npk_mem_write_byte(pat1, 0i64, 97i64); // 'a'
-    drop npk_mem_write_byte(pat1, 1i64, 91i64); // '['
-    drop npk_mem_write_byte(pat1, 2i64, 48i64); // '0'
-    drop npk_mem_write_byte(pat1, 3i64, 45i64); // '-'
-    drop npk_mem_write_byte(pat1, 4i64, 57i64); // '9'
-    drop npk_mem_write_byte(pat1, 5i64, 93i64); // ']'
-    drop npk_mem_write_byte(pat1, 6i64, 98i64); // 'b'
+    drop npk_mem_write_byte(pat1, 1i64, 226i64); // 0xE2
+    drop npk_mem_write_byte(pat1, 2i64, 157i64); // 0x9D
+    drop npk_mem_write_byte(pat1, 3i64, 164i64); // 0xA4
+    drop npk_mem_write_byte(pat1, 4i64, 98i64); // 'b'
 
-    int64:txt1 = npk_core_alloc(3i64);
+    // Text: 'a' '❤' 'b'
+    int64:txt1 = npk_core_alloc(5i64);
     drop npk_mem_write_byte(txt1, 0i64, 97i64); // 'a'
-    drop npk_mem_write_byte(txt1, 1i64, 53i64); // '5'
-    drop npk_mem_write_byte(txt1, 2i64, 98i64); // 'b'
+    drop npk_mem_write_byte(txt1, 1i64, 226i64); // 0xE2
+    drop npk_mem_write_byte(txt1, 2i64, 157i64); // 0x9D
+    drop npk_mem_write_byte(txt1, 3i64, 164i64); // 0xA4
+    drop npk_mem_write_byte(txt1, 4i64, 98i64); // 'b'
 
-    MatchResult:res1 = raw nregx_match(pat1, 7i64, txt1, 3i64);
-    exit res1.matched;
+    MatchResult:res1 = raw nregx_match(pat1, 5i64, txt1, 5i64);
+    
+    // We expect 101 for match, 100 for no match
+    if (res1.end_idx != 5i32) {
+        exit 201i32;
+    }
+    exit 100i32 + res1.matched;
 };
 
-pub func:failsafe = int32(tbb32:err) {
-    drop err;
-    exit 1i32;
+pub func:failsafe = int32(tbb32:err) { drop err;
+    exit 242i32;
 };

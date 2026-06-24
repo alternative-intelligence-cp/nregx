@@ -15,12 +15,14 @@ pub fixed int32:OP_ANY        = 4i32;
 pub fixed int32:OP_CHAR_CLASS = 5i32;
 pub fixed int32:OP_ASSERT_START = 6i32;
 pub fixed int32:OP_ASSERT_END   = 7i32;
+pub fixed int32:OP_SAVE         = 8i32;
 
 // Match Boundary struct for public API
 pub struct:MatchResult = {
     int32:matched;
     int32:start_idx;
     int32:end_idx;
+    int32[20]:captures;
 };
 
 // NFA State node utilizing Generational Handles
@@ -47,7 +49,10 @@ pub struct:CacheEntry = {
     int64:p_len;
     int64:arena_ptr;
     int64:start_state;
+    int64:prefix_ptr;
+    int64:prefix_len;
+    CacheEntry->: prev;
     CacheEntry->: next;
-    atomic<int32>: hit_counter;
-    atomic<int32>: ref_count;
+    int64: hit_counter;
+    int64: ref_count;
 };

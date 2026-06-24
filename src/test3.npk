@@ -1,0 +1,50 @@
+use "nregx.npk".*;
+use "regex_types.npk".*;
+use "nfa_arena.npk".*;
+use "util/mem_primitives.npk".*;
+
+extern "nitpick_libc_sys" {
+    func:npk_sys_print = void(int64:str, int32:len);
+    func:npk_sys_exit = void(int32:code);
+}
+
+pub func:main = int32() {
+    drop nregx_init();
+
+    int64:pat1 = npk_core_alloc(3i64);
+    drop npk_mem_write_byte(pat1, 0i64, 97i64); // 'a'
+    drop npk_mem_write_byte(pat1, 1i64, 46i64); // '.'
+    drop npk_mem_write_byte(pat1, 2i64, 98i64); // 'b'
+
+    int64:txt1 = npk_core_alloc(3i64);
+    drop npk_mem_write_byte(txt1, 0i64, 97i64); // 'a'
+    drop npk_mem_write_byte(txt1, 1i64, 53i64); // '5'
+    drop npk_mem_write_byte(txt1, 2i64, 98i64); // 'b'
+
+    int64:entry = compile_and_cache(pat1, 3i64);
+    if (entry == 0i64) { exit 99i32; }
+
+    wild CacheEntry->:entry_ptr = @cast_unchecked<CacheEntry->>(@cast_unchecked<CacheEntry->>(entry));
+    int64:arena_ptr = entry_ptr->arena_ptr;
+    int64:start_state = entry_ptr->start_state;
+    
+    // Dump states
+    int32:idx = 0i32;
+    when (idx < 10i32) {
+        int64:s = npk_mem_read_int64(arena_ptr, 0i64) + ((idx => int64) * 64i64);
+        int32:op = npk_mem_read_int32(s, 0i64);
+        int32:mc = npk_mem_read_int32(s, 4i64);
+        int64:out1 = npk_mem_read_int64(s, 8i64);
+        if (op == 0i32) {
+            if (out1 == 0i64) {
+               // end of states
+            }
+        }
+        idx = idx + 1i32;
+    }
+
+    MatchResult:res1 = raw nregx_match(pat1, 3i64, txt1, 3i64);
+    exit res1.matched;
+};
+
+pub func:failsafe = int32(tbb32:err) { drop err; drop err; exit 1i32; };

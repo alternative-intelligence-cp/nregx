@@ -1,0 +1,38 @@
+use "nregx.npk".*;
+use "regex_types.npk".*;
+
+extern "nitpick_libc_sys" {
+    func:npk_sys_print = void(int64:str, int32:len);
+    func:npk_sys_exit = void(int32:code);
+}
+
+pub func:main = int32() {
+    drop nregx_init();
+
+    MatchResult:res1 = raw nregx_match_str("a+", "aaa");
+    if (res1.matched != 1i32) { exit 10i32; }
+    if (res1.start_idx != 0i32) { exit 11i32; }
+    if (res1.end_idx != 3i32) { exit 12i32; } 
+    
+    MatchResult:res2 = raw nregx_match_str("[^a-z]", "A");
+    if (res2.matched != 1i32) { exit 20i32; }
+    
+    MatchResult:res3 = raw nregx_match_str("a{0,0}", "b");
+    if (res3.matched != 1i32) { exit 30i32; }
+    if (res3.end_idx != 0i32) { exit 31i32; }
+
+    MatchResult:res4 = raw nregx_match_str("(a)(b)", "ab");
+    if (res4.matched != 1i32) { exit 40i32; }
+    if (res4.captures[0] != 0i32) { exit 41i32; } // Full match start
+    if (res4.captures[1] != 2i32) { exit 42i32; } // Full match end
+    if (res4.captures[2] != 0i32) { exit 43i32; } // (a) start
+    if (res4.captures[3] != 1i32) { exit 44i32; } // (a) end
+    if (res4.captures[4] != 1i32) { exit 45i32; } // (b) start
+    if (res4.captures[5] != 2i32) { exit 46i32; } // (b) end
+
+    exit 0i32;
+};
+
+pub func:failsafe = int32(tbb32:err) { drop err;
+    exit 242i32;
+};

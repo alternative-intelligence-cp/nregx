@@ -13,10 +13,13 @@ extern "nitpick_libc_mem" {
 
 extern "nitpick_libc_mem" {
     func:npk_mem_compare       = int64(int64:a, int64:b, int64:n);
+    func:npk_tlc_batch_alloc   = int64(int64:size, int64:count);
     func:npk_mem_offset        = int64(int64:ptr, int64:offset);
     func:npk_mem_ptr_size      = int64();
+}
+
+extern "nitpick_libc_mem" {
     func:npk_core_alloc  = int64(int64:size);
-    func:nitpick_libc_mem_calloc  = int64(int64:count, int64:size);
     func:nitpick_libc_mem_realloc = int64(int64:ptr, int64:size);
     func:npk_core_dalloc    = void(int64:ptr);
 }
@@ -32,7 +35,7 @@ pub func:npk_mem_write_int32 = int64(int64:ptr, int64:offset, int32:val) {
 pub func:npk_mem_read_int16 = int16(int64:ptr, int64:offset) {
     int64:b0 = npk_mem_read_byte(ptr, offset);
     int64:b1 = npk_mem_read_byte(ptr, offset + 1i64);
-    pass ((b1 << 8i64) | b0) => int16;
+    pass @cast_unchecked<int16>((b1 << 8i64) | b0);
 };
 
 pub func:npk_mem_write_int16 = int64(int64:ptr, int64:offset, int16:val) {
@@ -78,7 +81,7 @@ pub func:npk_mem_read_int8 = int8(int8->:buf_arg, int64:pos) {
     int8->:local_buf = buf_arg;
     int64:ptr = <-(@local_buf => int64->);
     int64:val = npk_mem_read_byte(ptr, pos);
-    pass val => int8;
+    pass @cast_unchecked<int8>(val);
 };
 
 

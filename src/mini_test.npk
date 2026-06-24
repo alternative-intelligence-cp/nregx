@@ -1,0 +1,19 @@
+use "nregx.npk".*;
+
+pub func:failsafe = int32(tbb32:err) { drop err;
+    exit 1i32;
+};
+
+pub func:main = int32() {
+    drop nregx_init();
+    
+    int64:pat = npk_core_alloc(2i64);
+    drop npk_mem_write_byte(pat, 0i64, 97i64); // 'a'
+    
+    int64:txt = npk_core_alloc(2i64);
+    drop npk_mem_write_byte(txt, 0i64, 97i64); // 'a'
+    
+    MatchResult:res = nregx_match(pat, 1i64, txt, 1i64);
+    
+    exit 100i32 + res.matched;
+};

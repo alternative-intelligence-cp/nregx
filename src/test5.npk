@@ -1,0 +1,48 @@
+use "nregx.npk".*;
+use "regex_types.npk".*;
+use "nfa_arena.npk".*;
+use "regex_compiler.npk".*;
+use "nfa_compiler.npk".*;
+use "util/mem_primitives.npk".*;
+
+extern "nitpick_libc_sys" {
+    func:npk_sys_print = void(int64:str, int32:len);
+    func:npk_sys_exit = void(int32:code);
+}
+
+pub func:main = int32() {
+    drop nregx_init();
+
+    int64:pat1 = npk_core_alloc(3i64);
+    drop npk_mem_write_byte(pat1, 0i64, 97i64); // 'a'
+    drop npk_mem_write_byte(pat1, 1i64, 46i64); // '.'
+    drop npk_mem_write_byte(pat1, 2i64, 98i64); // 'b'
+    
+    int64:tokens = raw lex_pattern(pat1, 3i64);
+    int32:token_count = 3i32; // manual
+    int64:ast_root = raw parse_regex_ast(tokens, token_count);
+    
+    int64:arena_ptr = raw regex_arena_init(1024i64);
+    int64:start_state = raw compile_nfa(arena_ptr, ast_root);
+    
+    int64:idx = start_state;
+    // We cannot easily traverse, but we know states are allocated sequentially from arena_data.
+    int64:arena_data = npk_mem_read_int64(arena_ptr, 0i64);
+    int32:i = 0i32;
+    when (i < 8i32) {
+        int64:s = arena_data + ((i => int64) * 64i64);
+        int32:op = npk_mem_read_int32(s, 0i64);
+        int32:mc = npk_mem_read_int32(s, 4i64);
+        int64:out1 = npk_mem_read_int64(s, 8i64);
+        int64:out2 = npk_mem_read_int64(s, 16i64);
+        if (op == 0i32) {
+            if (i > 4i32) { i = 8i32; } // skip empty
+        }
+        // print op, mc (we can't print easily without C printf, but we can exit with it!)
+        // wait, we can't exit multiple times.
+        i = i + 1i32;
+    }
+
+    exit 0i32;
+};
+pub func:failsafe = int32(tbb32:err) { drop err; drop err; exit 1i32; };
