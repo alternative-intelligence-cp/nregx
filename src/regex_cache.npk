@@ -25,7 +25,7 @@ extern func:npk_atomic_int32_fetch_sub = int32(int64:ptr, int32:val, int32:order
 
 pub func:regex_cache_init = int32() {
     int64:ptr = npk_core_alloc(32i64);
-    RegexCacheGlobal->:c = cast_unchecked<RegexCacheGlobal->>(ptr);
+    RegexCacheGlobal->:c = @cast_unchecked<RegexCacheGlobal->>(ptr);
     c->lock = npk_atomic_int32_create(0i32);
     c->head = 0i64;
     c->tail = 0i64;
@@ -44,7 +44,7 @@ func:strings_equal = int32(int64:str1, int64:len1, int64:str2, int64:len2) {
 
 pub func:regex_cache_get = int64(int64:pattern, int64:pattern_len) {
     if (g_regex_cache_ptr == 0i64) { pass 0i64; }
-    RegexCacheGlobal->:cache = cast_unchecked<RegexCacheGlobal->>(g_regex_cache_ptr);
+    RegexCacheGlobal->:cache = @cast_unchecked<RegexCacheGlobal->>(g_regex_cache_ptr);
     
     int64:lock = cache->lock;
     int32:locked = 0i32;
@@ -72,7 +72,7 @@ pub func:regex_cache_get = int64(int64:pattern, int64:pattern_len) {
         } else if (curr == 0i64) {
             running = 0i32;
         } else {
-            wild CacheEntry->:curr_ptr = cast_unchecked<CacheEntry->>(curr);
+            CacheEntry->:curr_ptr = @cast_unchecked<CacheEntry->>(curr);
             int64:p_str = curr_ptr->p_str;
             int64:p_len = curr_ptr->p_len;
             
@@ -83,8 +83,8 @@ pub func:regex_cache_get = int64(int64:pattern, int64:pattern_len) {
                 
                 // Move to front if not already at head
                 if (curr != cache->head) {
-                    wild CacheEntry->:prev_ptr = curr_ptr->prev;
-                    wild CacheEntry->:next_ptr = curr_ptr->next;
+                    CacheEntry->:prev_ptr = curr_ptr->prev;
+                    CacheEntry->:next_ptr = curr_ptr->next;
                     
                     if (cast_unchecked<int64>(prev_ptr) != 0i64) {
                         prev_ptr->next = next_ptr;
@@ -96,9 +96,9 @@ pub func:regex_cache_get = int64(int64:pattern, int64:pattern_len) {
                         cache->tail = cast_unchecked<int64>(prev_ptr);
                     }
                     
-                    wild CacheEntry->:old_head = cast_unchecked<CacheEntry->>(cache->head);
+                    CacheEntry->:old_head = @cast_unchecked<CacheEntry->>(cache->head);
                     curr_ptr->next = old_head;
-                    curr_ptr->prev = cast_unchecked<CacheEntry->>(0i64);
+                    curr_ptr->prev = @cast_unchecked<CacheEntry->>(0i64);
                     old_head->prev = curr_ptr;
                     cache->head = curr;
                 }
@@ -116,7 +116,7 @@ pub func:regex_cache_get = int64(int64:pattern, int64:pattern_len) {
 
 pub func:regex_cache_free_entry = int32(int64:entry) {
     if (entry == 0i64) { pass 0i32; }
-    wild CacheEntry->:entry_ptr = cast_unchecked<CacheEntry->>(entry);
+    CacheEntry->:entry_ptr = @cast_unchecked<CacheEntry->>(entry);
     int64:p_str = entry_ptr->p_str;
     if (p_str != 0i64) {
         drop npk_core_dalloc(p_str);
@@ -139,7 +139,7 @@ pub func:regex_cache_free_entry = int32(int64:entry) {
 
 pub func:regex_cache_decrement_ref = int32(int64:entry) {
     if (entry == 0i64) { pass 0i32; }
-    wild CacheEntry->:entry_ptr = cast_unchecked<CacheEntry->>(entry);
+    CacheEntry->:entry_ptr = @cast_unchecked<CacheEntry->>(entry);
     
     int32:prev = npk_atomic_int32_fetch_sub(entry_ptr->ref_count, 1i32, 5i32);
     
@@ -152,7 +152,7 @@ pub func:regex_cache_decrement_ref = int32(int64:entry) {
 
 pub func:regex_cache_insert = int64(int64:pattern, int64:pattern_len, int64:arena_ptr, int64:start_state, int64:prefix_ptr, int64:prefix_len) {
     if (g_regex_cache_ptr == 0i64) { pass 0i64; }
-    RegexCacheGlobal->:cache = cast_unchecked<RegexCacheGlobal->>(g_regex_cache_ptr);
+    RegexCacheGlobal->:cache = @cast_unchecked<RegexCacheGlobal->>(g_regex_cache_ptr);
     
     // Copy the string
     int64:p_copy = 0i64;
@@ -185,7 +185,7 @@ pub func:regex_cache_insert = int64(int64:pattern, int64:pattern_len, int64:aren
         pass 0i64;
     }
 
-    wild CacheEntry->:entry_ptr = cast_unchecked<CacheEntry->>(entry);
+    CacheEntry->:entry_ptr = @cast_unchecked<CacheEntry->>(entry);
     entry_ptr->p_str = p_copy;
     entry_ptr->p_len = pattern_len;
     entry_ptr->arena_ptr = arena_ptr;
@@ -218,10 +218,10 @@ pub func:regex_cache_insert = int64(int64:pattern, int64:pattern_len, int64:aren
     int64:sz = cache->size;
     
     // Insert at head
-    entry_ptr->next = cast_unchecked<CacheEntry->>(cache->head);
-    entry_ptr->prev = cast_unchecked<CacheEntry->>(0i64);
+    entry_ptr->next = @cast_unchecked<CacheEntry->>(cache->head);
+    entry_ptr->prev = @cast_unchecked<CacheEntry->>(0i64);
     if (cache->head != 0i64) {
-        wild CacheEntry->:old_head = cast_unchecked<CacheEntry->>(cache->head);
+        CacheEntry->:old_head = @cast_unchecked<CacheEntry->>(cache->head);
         old_head->prev = entry_ptr;
     }
     cache->head = entry;
@@ -236,11 +236,11 @@ pub func:regex_cache_insert = int64(int64:pattern, int64:pattern_len, int64:aren
     if (cache->size > MAX_CACHE_SIZE) {
         int64:t = cache->tail;
         if (t != 0i64) {
-            wild CacheEntry->:t_ptr = cast_unchecked<CacheEntry->>(t);
-            wild CacheEntry->:t_prev = t_ptr->prev;
+            CacheEntry->:t_ptr = @cast_unchecked<CacheEntry->>(t);
+            CacheEntry->:t_prev = t_ptr->prev;
             cache->tail = cast_unchecked<int64>(t_prev);
             if (cast_unchecked<int64>(t_prev) != 0i64) {
-                t_prev->next = cast_unchecked<CacheEntry->>(0i64);
+                t_prev->next = @cast_unchecked<CacheEntry->>(0i64);
             } else {
                 cache->head = 0i64;
             }
@@ -266,7 +266,7 @@ pub func:regex_cache_insert = int64(int64:pattern, int64:pattern_len, int64:aren
 
 pub func:regex_cache_increment_hit = int32(int64:entry) {
     if (entry == 0i64) { pass 0i32; }
-    wild CacheEntry->:entry_ptr = cast_unchecked<CacheEntry->>(cast_unchecked<CacheEntry->>(entry));
+    CacheEntry->:entry_ptr = @cast_unchecked<CacheEntry->>(@cast_unchecked<CacheEntry->>(entry));
     drop npk_atomic_int32_fetch_add(entry_ptr->hit_counter, 1i32, 5i32);
     pass 1i32;
 };
@@ -282,7 +282,7 @@ pub func:regex_execute = MatchResult(int64:entry, int64:text, int64:text_len) {
     if (entry == 0i64) { pass def_match; }
     drop regex_cache_increment_hit(entry);
     
-    wild CacheEntry->:entry_ptr = cast_unchecked<CacheEntry->>(cast_unchecked<CacheEntry->>(entry));
+    CacheEntry->:entry_ptr = @cast_unchecked<CacheEntry->>(@cast_unchecked<CacheEntry->>(entry));
     int64:arena_ptr = entry_ptr->arena_ptr;
     int64:start_state = entry_ptr->start_state;
     int64:prefix_ptr = entry_ptr->prefix_ptr;
