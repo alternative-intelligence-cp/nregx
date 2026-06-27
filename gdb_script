@@ -1,0 +1,11 @@
+file ./test_bin
+b 'regex_vm.npk:140'
+run
+commands
+  silent
+  p/x state
+  p/x opcode
+  p c
+  p/x idx
+  c
+end

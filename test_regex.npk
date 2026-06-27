@@ -1,0 +1,2 @@
+// just to verify the logic bug
+pub func:failsafe = int32(tbb32:err) { exit 1i32; };

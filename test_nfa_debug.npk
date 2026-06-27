@@ -1,0 +1,4 @@
+use "regex_types.npk".*;
+use "ast_types.npk".*;
+extern "nitpick_libc_sys" { func:npk_sys_print = void(int64:str, int32:len); }
+// ... wait, I'll just use gdb instead of debug prints ...

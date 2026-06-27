@@ -1,0 +1,19 @@
+use "regex_types.npk".*;
+
+func:get_res = MatchResult(int64:x) {
+    if (x == 0i64) {
+        pass MatchResult{matched: 0i32, start_idx: 0i32, end_idx: 0i32};
+    }
+    MatchResult:res;
+    res.matched = 1i32;
+    pass res;
+};
+
+pub func:main = int32() {
+    MatchResult:res = raw get_res(0i64);
+    if (res.matched == 0i32) {
+        exit 0i32;
+    }
+    exit 1i32;
+};
+pub func:failsafe = int32(tbb32:err) { exit 1i32; };

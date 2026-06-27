@@ -1,0 +1,12 @@
+use "nregx.npk".*;
+extern "c" { func:string_to_cstr = int64(string:s); }
+pub func:failsafe = int32(tbb32:err) { exit 1i32; };
+pub func:main = int32() {
+    drop nregx_init();
+    int64:i = 0i64;
+    while (i < 5i64) {
+        MatchResult:match_res = raw nregx_match_str("flags", "    func:cli_open_str = int32(int64:pathname, int32:flags);");
+        i = i + 1i64;
+    }
+    exit 0i32;
+};

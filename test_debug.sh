@@ -1,0 +1,1 @@
+sed -i 's/int32:type = node_ptr->type;/extern "nitpick_libc_sys" { func:npk_sys_print = void(int64:str, int32:len); }\n        // removed print for now\n        int32:type = node_ptr->type;/' src/nfa_compiler.npk

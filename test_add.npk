@@ -1,0 +1,6 @@
+pub func:main = int32() {
+    int32:x = 0i32;
+    x = x + 2i32;
+    exit x;
+};
+pub func:failsafe = int32(tbb32:err) { exit 1i32; };

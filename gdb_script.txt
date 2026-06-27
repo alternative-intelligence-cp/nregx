@@ -1,0 +1,7 @@
+file ./test_bin
+b nfa_compiler.compile_nfa
+commands
+  print ast_root
+  continue
+end
+run

@@ -1,0 +1,8 @@
+use "core";
+pub func:main = int32() {
+    int64:ptr = npk_core_alloc(8i64);
+    drop npk_mem_write_int32(ptr, 0i64, 0i32);
+    atomic<int32>:a = cast_unchecked<atomic<int32> >(ptr);
+    int32:old = a.swap(1i32);
+    exit old;
+};

@@ -1,0 +1,7 @@
+extern "nitpick_libc_sys" { func:print_int = int32(int64:v); }
+pub func:failsafe = int32(tbb32:err) { exit cast_unchecked<int32>(err); };
+pub func:main = int32() {
+    atomic<int64>:c = atomic_new(0i64);
+    drop c.swap(1i64);
+    exit 0i32;
+};

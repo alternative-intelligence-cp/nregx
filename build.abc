@@ -1,0 +1,10 @@
+[project]
+name = "nregx"
+version = "1.0.0"
+
+[target.test_parse]
+type = "binary"
+sources = ["test_parse.npk"]
+flags = ["-I", "src", "-I", "/home/randy/Workspace/REPOS/nitpick-libc/src"]
+link_libraries = ["nitpick_libc_mem", "nitpick_libc_string", "atomic"]
+link_paths = ["/home/randy/Workspace/REPOS/nitpick-libc/shim"]

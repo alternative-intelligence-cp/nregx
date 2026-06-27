@@ -1,0 +1,14 @@
+use "src/regex_types.npk".*;
+
+func:return_struct = MatchResult() {
+    pass MatchResult{matched: 123i32, start_idx: 0i32, end_idx: 0i32};
+};
+
+func:main = int32() {
+    MatchResult:res = raw return_struct();
+    exit res.matched;
+};
+
+func:failsafe = int32(tbb32:err) {
+    exit 1i32;
+};
