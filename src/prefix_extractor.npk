@@ -3,6 +3,7 @@
 use "ast_types.npk".*;
 use "util/str_view.npk".*;
 use "util/mem_primitives.npk".*;
+use "alist.npk".*;
 
 
 
@@ -17,7 +18,7 @@ pub func:extract_literal_prefix = int64(int64:ast_root, int64:pattern) {
         pass ext;
     }
     
-    int64:trav_stack = alist();
+    int64:trav_stack = raw alist();
     
     int32:stack_size = 0i32;
     
@@ -31,13 +32,13 @@ pub func:extract_literal_prefix = int64(int64:ast_root, int64:pattern) {
             if ((type != AST_LITERAL) && (type != AST_CONCAT) && (type != AST_SAVE) && (type != AST_ASSERT_START)) {
                 running = 0i32;
             } else {
-                drop alpush(trav_stack, curr);
+                drop raw alpush(trav_stack, curr);
                 stack_size = stack_size + 1i32;
                 curr = npk_mem_read_int64(curr, 8i64); // left
             }
         } else {
             if (stack_size > 0i32) {
-                curr = alpop(trav_stack);
+                curr = raw alpop(trav_stack);
                 stack_size = stack_size - 1i32;
                 
                 int32:type = npk_mem_read_int32(curr, 0i64);
@@ -90,13 +91,13 @@ pub func:extract_literal_prefix = int64(int64:ast_root, int64:pattern) {
                 if ((type != AST_LITERAL) && (type != AST_CONCAT) && (type != AST_SAVE) && (type != AST_ASSERT_START)) {
                     running = 0i32;
                 } else {
-                    drop alpush(trav_stack, curr);
+                    drop raw alpush(trav_stack, curr);
                     stack_size = stack_size + 1i32;
                     curr = npk_mem_read_int64(curr, 8i64);
                 }
             } else {
                 if (stack_size > 0i32) {
-                    curr = alpop(trav_stack);
+                    curr = raw alpop(trav_stack);
                     stack_size = stack_size - 1i32;
                     
                     int32:type = npk_mem_read_int32(curr, 0i64);

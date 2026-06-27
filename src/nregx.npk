@@ -2,6 +2,7 @@
 
 use "regex_types.npk".*;
 use "ast_types.npk".*;
+use "alist.npk".*;
 use "nfa_arena.npk".*;
 use "regex_compiler.npk".*;
 use "nfa_compiler.npk".*;

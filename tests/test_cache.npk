@@ -1,7 +1,6 @@
 use "../src/nregx.npk".*;
 
 extern "nitpick_libc_sys" {
-    func:exit = void(int32:code);
     func:npk_core_alloc = int64(int64:size);
     func:npk_core_dalloc = int64(int64:ptr);
     func:npk_mem_write_byte = int64(int64:ptr, int64:offset, int64:val);
@@ -20,11 +19,18 @@ pub func:main = int32() {
     int64:i = 0i64;
     when (i < 2000i64) {
         drop(npk_mem_write_byte(dyn_pat, 2i64, (i % 26i64) + 97i64)); 
-        drop(nregx_match(dyn_pat, 3i64, "a", 1i64));
+        int64:t_str = string_to_cstr("a");
+        drop(nregx_match(dyn_pat, 3i64, t_str, 1i64));
+        drop(npk_core_dalloc(t_str));
         i = i + 1i64;
     }
     
     drop(npk_core_dalloc(dyn_pat));
     
-    exit(0i32);
+    exit 0i32;
+};
+
+pub func:failsafe = int32(tbb32:err) {
+    drop err;
+    exit 1i32;
 };

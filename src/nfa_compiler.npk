@@ -5,6 +5,7 @@ use "ast_types.npk".*;
 use "nfa_arena.npk".*;
 use "util/error_codes.npk".*;
 use "util/mem_primitives.npk".*;
+use "alist.npk".*;
 
 
 
@@ -13,9 +14,9 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
         fail ERR_REGEX_PARSE;
     }
     
-    int64:trav_stack = alist();
+    int64:trav_stack = raw alist();
     
-    int64:frag_stack = alist();
+    int64:frag_stack = raw alist();
     
     int32:frag_stack_size = 0i32;
     
@@ -24,13 +25,13 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
     // state: 0 = unvisited, 1 = left processed, 2 = right processed
     
     int32:trav_stack_size = 0i32;
-    drop alpush(trav_stack, ast_root);
-    drop alpush(trav_stack, 0i64);
+    drop raw alpush(trav_stack, ast_root);
+    drop raw alpush(trav_stack, 0i64);
     trav_stack_size = trav_stack_size + 2i32;
     
     when (trav_stack_size > 0i32) {
-        int64:state = alpop(trav_stack);
-        int64:node = alpop(trav_stack);
+        int64:state = raw alpop(trav_stack);
+        int64:node = raw alpop(trav_stack);
         trav_stack_size = trav_stack_size - 2i32;
         
         wild AstNode->:node_ptr = cast_unchecked<AstNode->>(cast_unchecked<AstNode->>(node));
@@ -40,21 +41,21 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
         int64:right = node_ptr->right;
         
         if (state == 0i64) {
-            drop alpush(trav_stack, node);
-            drop alpush(trav_stack, 1i64);
+            drop raw alpush(trav_stack, node);
+            drop raw alpush(trav_stack, 1i64);
             trav_stack_size = trav_stack_size + 2i32;
             if (left != 0i64) {
-                drop alpush(trav_stack, left);
-                drop alpush(trav_stack, 0i64);
+                drop raw alpush(trav_stack, left);
+                drop raw alpush(trav_stack, 0i64);
                 trav_stack_size = trav_stack_size + 2i32;
             }
         } else if (state == 1i64) {
-            drop alpush(trav_stack, node);
-            drop alpush(trav_stack, 2i64);
+            drop raw alpush(trav_stack, node);
+            drop raw alpush(trav_stack, 2i64);
             trav_stack_size = trav_stack_size + 2i32;
             if (right != 0i64) {
-                drop alpush(trav_stack, right);
-                drop alpush(trav_stack, 0i64);
+                drop raw alpush(trav_stack, right);
+                drop raw alpush(trav_stack, 0i64);
                 trav_stack_size = trav_stack_size + 2i32;
             }
         } else {
@@ -68,8 +69,8 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 s_ptr->out1 = e;
                 
                 // push fragment
-                drop alpush(frag_stack, s);
-                drop alpush(frag_stack, e);
+                drop raw alpush(frag_stack, s);
+                drop raw alpush(frag_stack, e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_EPSILON) {
                 int64:s = raw regex_arena_alloc(arena_ptr, OP_JMP, 0i32);
@@ -78,8 +79,8 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 if (e == 0i64) { fail ERR_REGEX_PARSE; }
                 wild NfaState->:s_ptr = cast_unchecked<NfaState->>(s);
                 s_ptr->out1 = e;
-                drop alpush(frag_stack, s);
-                drop alpush(frag_stack, e);
+                drop raw alpush(frag_stack, s);
+                drop raw alpush(frag_stack, e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_ANY) {
                 int64:s = raw regex_arena_alloc(arena_ptr, OP_ANY, 0i32);
@@ -89,8 +90,8 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 wild NfaState->:s_ptr = cast_unchecked<NfaState->>(cast_unchecked<NfaState->>(s));
                 s_ptr->out1 = e;
                 
-                drop alpush(frag_stack, s);
-                drop alpush(frag_stack, e);
+                drop raw alpush(frag_stack, s);
+                drop raw alpush(frag_stack, e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_CLASS) {
                 int64:s = raw regex_arena_alloc(arena_ptr, OP_CHAR_CLASS, 0i32);
@@ -108,8 +109,8 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                     j = j + 1i64;
                 }
                 
-                drop alpush(frag_stack, s);
-                drop alpush(frag_stack, e);
+                drop raw alpush(frag_stack, s);
+                drop raw alpush(frag_stack, e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_ASSERT_START) {
                 int64:s = raw regex_arena_alloc(arena_ptr, OP_ASSERT_START, 0i32);
@@ -119,8 +120,8 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 wild NfaState->:s_ptr = cast_unchecked<NfaState->>(cast_unchecked<NfaState->>(s));
                 s_ptr->out1 = e;
                 
-                drop alpush(frag_stack, s);
-                drop alpush(frag_stack, e);
+                drop raw alpush(frag_stack, s);
+                drop raw alpush(frag_stack, e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_ASSERT_END) {
                 int64:s = raw regex_arena_alloc(arena_ptr, OP_ASSERT_END, 0i32);
@@ -130,13 +131,13 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 wild NfaState->:s_ptr = cast_unchecked<NfaState->>(s);
                 s_ptr->out1 = e;
                 
-                drop alpush(frag_stack, s);
-                drop alpush(frag_stack, e);
+                drop raw alpush(frag_stack, s);
+                drop raw alpush(frag_stack, e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_SAVE) {
                 if (frag_stack_size < 1i32) { fail ERR_REGEX_PARSE; }
-                int64:f_e = alpop(frag_stack);
-                int64:f_s = alpop(frag_stack);
+                int64:f_e = raw alpop(frag_stack);
+                int64:f_s = raw alpop(frag_stack);
                 frag_stack_size = frag_stack_size - 1i32;
                 
                 int64:save_start = raw regex_arena_alloc(arena_ptr, OP_SAVE, val * 2i32);
@@ -157,15 +158,15 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 f_e_ptr->opcode = OP_JMP;
                 f_e_ptr->out1 = save_end;
                 
-                drop alpush(frag_stack, save_start);
-                drop alpush(frag_stack, e);
+                drop raw alpush(frag_stack, save_start);
+                drop raw alpush(frag_stack, e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_CONCAT) {
                 if (frag_stack_size < 2i32) { fail ERR_REGEX_PARSE; }
-                int64:f2_e = alpop(frag_stack);
-                int64:f2_s = alpop(frag_stack);
-                int64:f1_e = alpop(frag_stack);
-                int64:f1_s = alpop(frag_stack);
+                int64:f2_e = raw alpop(frag_stack);
+                int64:f2_s = raw alpop(frag_stack);
+                int64:f1_e = raw alpop(frag_stack);
+                int64:f1_s = raw alpop(frag_stack);
                 frag_stack_size = frag_stack_size - 2i32;
                 
                 // Patch f1_e to JMP to f2_s
@@ -173,13 +174,13 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 f1_e_ptr->opcode = OP_JMP;
                 f1_e_ptr->out1 = f2_s;
                 
-                drop alpush(frag_stack, f1_s);
-                drop alpush(frag_stack, f2_e);
+                drop raw alpush(frag_stack, f1_s);
+                drop raw alpush(frag_stack, f2_e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_STAR) {
                 if (frag_stack_size < 1i32) { fail ERR_REGEX_PARSE; }
-                int64:f1_e = alpop(frag_stack);
-                int64:f1_s = alpop(frag_stack);
+                int64:f1_e = raw alpop(frag_stack);
+                int64:f1_s = raw alpop(frag_stack);
                 frag_stack_size = frag_stack_size - 1i32;
                 
                 int64:s = raw regex_arena_alloc(arena_ptr, OP_SPLIT, 0i32);
@@ -202,15 +203,15 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 f1_e_ptr->opcode = OP_JMP;
                 f1_e_ptr->out1 = s;
                 
-                drop alpush(frag_stack, s);
-                drop alpush(frag_stack, e);
+                drop raw alpush(frag_stack, s);
+                drop raw alpush(frag_stack, e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_ALT) {
                 if (frag_stack_size < 2i32) { fail ERR_REGEX_PARSE; }
-                int64:f2_e = alpop(frag_stack);
-                int64:f2_s = alpop(frag_stack);
-                int64:f1_e = alpop(frag_stack);
-                int64:f1_s = alpop(frag_stack);
+                int64:f2_e = raw alpop(frag_stack);
+                int64:f2_s = raw alpop(frag_stack);
+                int64:f1_e = raw alpop(frag_stack);
+                int64:f1_s = raw alpop(frag_stack);
                 frag_stack_size = frag_stack_size - 2i32;
 
                 int64:s = raw regex_arena_alloc(arena_ptr, OP_SPLIT, 0i32);
@@ -230,13 +231,13 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 f2_e_ptr->opcode = OP_JMP;
                 f2_e_ptr->out1 = e;
 
-                drop alpush(frag_stack, s);
-                drop alpush(frag_stack, e);
+                drop raw alpush(frag_stack, s);
+                drop raw alpush(frag_stack, e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_PLUS) {
                 if (frag_stack_size < 1i32) { fail ERR_REGEX_PARSE; }
-                int64:f1_e = alpop(frag_stack);
-                int64:f1_s = alpop(frag_stack);
+                int64:f1_e = raw alpop(frag_stack);
+                int64:f1_s = raw alpop(frag_stack);
                 frag_stack_size = frag_stack_size - 1i32;
 
                 int64:s = raw regex_arena_alloc(arena_ptr, OP_SPLIT, 0i32);
@@ -260,13 +261,13 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 s_ptr->opcode = OP_JMP;
                 s_ptr->out1 = f1_s;
 
-                drop alpush(frag_stack, s);
-                drop alpush(frag_stack, e);
+                drop raw alpush(frag_stack, s);
+                drop raw alpush(frag_stack, e);
                 frag_stack_size = frag_stack_size + 1i32;
             } else if (type == AST_QMARK) {
                 if (frag_stack_size < 1i32) { fail ERR_REGEX_PARSE; }
-                int64:f1_e = alpop(frag_stack);
-                int64:f1_s = alpop(frag_stack);
+                int64:f1_e = raw alpop(frag_stack);
+                int64:f1_s = raw alpop(frag_stack);
                 frag_stack_size = frag_stack_size - 1i32;
 
                 int64:s = raw regex_arena_alloc(arena_ptr, OP_SPLIT, 0i32);
@@ -289,8 +290,8 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
                 f1_e_ptr->opcode = OP_JMP;
                 f1_e_ptr->out1 = e;
 
-                drop alpush(frag_stack, s);
-                drop alpush(frag_stack, e);
+                drop raw alpush(frag_stack, s);
+                drop raw alpush(frag_stack, e);
                 frag_stack_size = frag_stack_size + 1i32;
             }
         }
@@ -300,8 +301,8 @@ pub func:compile_nfa = int64(int64:arena_ptr, int64:ast_root) {
         fail ERR_REGEX_PARSE;
     }
     
-    int64:final_e = alpop(frag_stack);
-    int64:final_s = alpop(frag_stack);
+    int64:final_e = raw alpop(frag_stack);
+    int64:final_s = raw alpop(frag_stack);
     
     pass final_s;
 };
