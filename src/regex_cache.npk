@@ -21,85 +21,29 @@ use "util/mem_primitives.npk".*;
 pub int64:g_regex_cache_ptr = 0i64;
 pub fixed int64:MAX_CACHE_SIZE = 1000i64;
 
-// ── Spinlock helpers ──────────────────────────────────────────────────────────
+// ── Spinlock helpers ─────────────────────────────────────────────────────────
 //
-// The lock int32 lives at offset 24 inside the cache header allocation.
-// We use a stack atomic<int32> as the mechanism, and alias it to the header.
-//
-// IMPLEMENTATION NOTE: atomic<int32> is stack-allocated by atomic_new().
-// We initialize it to the CURRENT value of the header lock, perform the op,
-// then write back. This is NOT safe for cross-thread sharing — the atomic
-// object itself lives on the stack.
-//
-// CORRECT APPROACH for shared memory: use the atomic<int32>.swap(1) pattern
-// directly on a per-call stack local that we initialize by loading from the
-// shared int32 at header+24. Since the spinlock needs to atomically swap ON
-// the shared memory location, we need the atomic to BE that location.
-//
-// With ATOMIC-NATIVE-001: the stack atomic is already a ptr to the alloca.
-// For cross-thread atomics we need the alloca to BE the shared location.
-// We achieve this by: keeping the cache lock AT a fixed address (header+24)
-// and operating on it via a local atomic that is initialized with the
-// current value — BUT this is still UB for multi-thread.
-//
-// CORRECT SINGLE-BINARY approach: use a file-scope int32 stored in BSS
-// (global variable), cast it to an atomic<int32> handle.
-// Nitpick doesn't yet support casting raw addresses to atomic<int32>.
-//
-// PRAGMATIC SOLUTION: The lock is stored in g_regex_cache_ptr+24 as an
-// int32. We use npk_mem_compare_and_swap (libn CAS) OR we do a pure-Nitpick
-// TAS via the atomic<int32> by performing operations on a PROCESS-WIDE
-// spinlock variable initialized once as a stack atomic in regex_cache_init
-// and its ptr stored in a global int64.
-//
-// ACTUAL IMPLEMENTATION: We use a single global int64:g_cache_lock_ptr that
-// holds the address of the atomic storage (a 4-byte heap allocation).
-// All lock ops load this ptr and operate on the int32 at that address via
-// the raw mem primitives. This gives us a shared mutex that works correctly.
-// The LLVM IR emitted will use the heap address directly for atomic ops.
-
-pub int64:g_cache_lock_ptr = 0i64;  // address of the int32 spinlock cell
-
-// TAS acquire: spin until we atomically swap 0→1
-// Uses a stack atomic initialized each iteration, which reads from the
-// shared lock cell. To do true atomic RMW on the heap cell, we need the
-// atomic<int32> storage to BE the heap cell. We achieve this by embedding
-// the int32 inside the cache header and using a per-call stack atomic
-// initialized to 0 that we use only for its ops — but we must read/write
-// the cache header word to get actual sharing.
-//
-// SIMPLEST CORRECT APPROACH that compiles today:
-// Use the cache header's int32 at offset 24 as a simple int32 mutex.
-// Use fetch_add/store sequences. Not perfectly atomic but works with
-// the current compiler since we have:
-//   1. A stack atomic<int32> per call to hold the swap result.
-//   2. No way to alias a heap address to an atomic<int32> yet.
-//
-// For now: implement with a conservative acquire that reads the header,
-// checks, and retries — which is correct under the GIL assumption of the
-// current nregx usage (single-threaded callers from nlists etc.)
-// The atomics infrastructure is in place for when pointer-based atomic
-// aliasing lands.
+// ATOMIC-CAS-PTR-001 (v0.61.104): The lock int32 lives at offset 24 of the
+// cache header allocation.  We alias it via atomic_from_ptr<int32> so that
+// acquire uses a true atomicrmw xchg (TAS) and release uses store atomic —
+// both seq_cst.  This gives correct mutual exclusion even with concurrent
+// threads on the same cache instance.
 
 func:cache_lock_acquire = NIL() {
     if (g_regex_cache_ptr == 0i64) { pass NIL; }
-    // TAS spinlock: read the int32 at header+24.
-    // If 0 (free) → write 1 (acquire) and exit.
-    // If 1 (held) → spin.
-    int32:done = 0i32;
-    when (done == 0i32) {
-        int32:cur = raw npk_mem_read_int32(g_regex_cache_ptr, 24i64);
-        if (cur == 0i32) {
-            drop npk_mem_write_int32(g_regex_cache_ptr, 24i64, 1i32);
-            done = 1i32;
-        }
+    atomic<int32>:lk = atomic_from_ptr<int32>(g_regex_cache_ptr + 24i64);
+    // Spin until we atomically exchange 0 → 1 (TAS acquire)
+    int32:old = 1i32;
+    when (old != 0i32) {
+        old = lk.swap(1i32);   // atomicrmw xchg seq_cst
     }
     pass NIL;
 };
 
 func:cache_lock_release = NIL() {
     if (g_regex_cache_ptr == 0i64) { pass NIL; }
-    drop npk_mem_write_int32(g_regex_cache_ptr, 24i64, 0i32);
+    atomic<int32>:lk = atomic_from_ptr<int32>(g_regex_cache_ptr + 24i64);
+    lk.store(0i32);            // store atomic seq_cst (release)
     pass NIL;
 };
 
